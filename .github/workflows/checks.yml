@@ -2,7 +2,7 @@ name: Comprobaciones
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/heraap-*']
   push:
     branches: [main]
 
@@ -38,5 +38,7 @@ jobs:
           npm run setup
       - name: Revisar código
         run: npm run check
+      - name: Validar Compose
+        run: bash scripts/localemu.sh config
       - name: Compilar frontend
         run: npm run build

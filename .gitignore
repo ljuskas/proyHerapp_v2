@@ -10,3 +10,4 @@ coverage/
 .state/
 infra/data/
 .DS_Store
+__pycache__/

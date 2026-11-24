@@ -1,0 +1,50 @@
+name: heraap-local
+
+services:
+  localemu:
+    image: localemu/localemu:1.4.0@sha256:ecc9d3b8c752e84b7ba206338c2a7f9da950f4e8ce47631b1e525ed1455644f1
+    container_name: heraap-localemu
+    restart: unless-stopped
+    stop_grace_period: 60s
+    ports:
+      - '127.0.0.1:4566:4566'
+    environment:
+      GATEWAY_LISTEN: 0.0.0.0:4566
+      PERSISTENCE: '1'
+      SNAPSHOT_SAVE_STRATEGY: SCHEDULED
+      SNAPSHOT_FLUSH_INTERVAL: '15'
+      SNAPSHOT_LOAD_STRATEGY: ON_STARTUP
+      MAIN_DOCKER_NETWORK: heraap-local
+      LAMBDA_DOCKER_NETWORK: heraap-local
+      DASHBOARD_API_OPEN: '1'
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: 'true'
+    volumes:
+      - localemu-data:/var/lib/localemu
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      default:
+        aliases: [localemu]
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '--silent', 'http://127.0.0.1:4566/_localemu/health']
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 20
+    cpus: 2
+    mem_limit: 4g
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+volumes:
+  localemu-data:
+    name: heraap-localemu-data
+
+networks:
+  default:
+    name: heraap-local
