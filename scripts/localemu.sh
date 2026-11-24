@@ -2,7 +2,11 @@
 set -Eeuo pipefail
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE=(docker compose -f "$PROJECT_DIR/infra/compose.yml")
+ENV_FILE="$PROJECT_DIR/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+  ENV_FILE="$PROJECT_DIR/.env.example"
+fi
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$PROJECT_DIR/infra/compose.yml")
 PYTHON=/opt/code/localemu/.venv/bin/python
 PROBE=/var/lib/localemu/.heraap-infra-probe.json
 

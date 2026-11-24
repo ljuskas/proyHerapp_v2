@@ -35,8 +35,26 @@ pruebas usan las herramientas incluidas en la imagen.
   Lambda se refiere a esa Lambda, no al emulador.
 - Dashboard: `http://127.0.0.1:4566/_localemu/dashboard`.
 
-El contenedor escucha en todas sus interfaces internas, pero Docker publica el
-puerto solamente en el loopback del servidor. Para usarlo desde otro equipo:
+El contenedor escucha en todas sus interfaces internas. Por defecto, Docker
+publica el puerto solamente en el loopback del servidor. Para habilitar acceso
+desde la LAN, configurar la IP del servidor en el `.env` de la raíz:
+
+```dotenv
+LOCALEMU_LAN_IP=192.168.100.9
+```
+
+Después ejecutar `bash scripts/localemu.sh up`. El script lee explícitamente ese
+archivo, independientemente del directorio de trabajo. Si no existe, usa
+`.env.example`, que mantiene el acceso solo por loopback. Compose deduplica las
+dos publicaciones cuando ambas apuntan a `127.0.0.1`.
+
+Con esa configuración, el dashboard está en
+`http://192.168.100.9:4566/_localemu/dashboard`, además de loopback. También quedan
+accesibles las APIs AWS del emulador en esa IP. `EXTRA_CORS_ALLOWED_ORIGINS` se
+configura con ese mismo origen para que carguen los recursos y las peticiones
+del dashboard. La IP propia de cada servidor queda en `.env`, excluido de Git.
+
+Como alternativa al acceso LAN, usar un túnel SSH:
 
 ```bash
 ssh -L 4566:127.0.0.1:4566 usuario@servidor
@@ -44,7 +62,8 @@ ssh -L 4566:127.0.0.1:4566 usuario@servidor
 
 Abrir el dashboard en el navegador del cliente usando esa misma URL local.
 `DASHBOARD_API_OPEN=1` permite las peticiones que llegan al contenedor por el
-bridge Docker. No se publica el servicio en las interfaces externas del host.
+bridge Docker. La publicación LAN se limita a la IP configurada, sin usar
+`0.0.0.0` como dirección de publicación del host.
 
 El entrypoint oficial ajusta el grupo del socket Docker y ejecuta LocalEmu con el
 usuario `localemu`. No se modifica el permiso del socket del host. Docker permite
@@ -154,9 +173,12 @@ Comprobado el 2026-11-24:
 - Recuperación de ambos datos tras reiniciar el contenedor, incluida la prueba
   reproducible `verify-persistence`.
 - Ejecución real de Lambda Node.js `v22.23.5` y acceso a LocalEmu 1.4.0 por DNS Docker.
-- Dashboard HTTP 200 y puerto publicado únicamente en `127.0.0.1:4566`.
+- Dashboard HTTP 200 y puerto inicialmente publicado en `127.0.0.1:4566`.
 - Limpieza de bucket, tabla, función, rol y grupo de logs temporales.
 
 El retorno al proceso Python está documentado; no se ejecutó un ensayo completo
 de retorno después de la migración. La instalación anterior y el respaldo se
 conservaron. No se ha probado un reinicio completo del servidor.
+
+La corrección posterior de acceso LAN añade una segunda publicación mediante
+`LOCALEMU_LAN_IP`, manteniendo el volumen y la publicación de loopback.

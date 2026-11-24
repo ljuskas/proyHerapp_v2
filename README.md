@@ -80,7 +80,11 @@ npm run infra:status
 npm run infra:verify
 ```
 
-Dashboard: `http://127.0.0.1:4566/_localemu/dashboard`. Las Lambdas usan el endpoint
+Dashboard local: `http://127.0.0.1:4566/_localemu/dashboard`. Para acceder desde la
+LAN, configurar `LOCALEMU_LAN_IP` con la IP del servidor en `.env` y ejecutar
+`npm run infra:up`; el dashboard y las APIs quedan disponibles también en esa IP.
+El ejemplo usa loopback como valor por defecto.
+Las Lambdas usan el endpoint
 interno `http://localemu:4566`. El emulador conserva los datos en el volumen
 `heraap-localemu-data`. Para operar sin Node/npm, usar `bash scripts/localemu.sh`.
 Respaldo, migración y retorno se documentan en [infra/README.md](infra/README.md).
