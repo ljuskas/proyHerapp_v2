@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.serverless/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+coverage/
+.state/
+infra/data/
+.DS_Store

@@ -1,0 +1,14 @@
+# Esqueleto de configuración. Aún no contiene recursos ni funciones.
+# El plugin bloquea su uso hasta aprobar e implementar la tarea de backend.
+service: heraap
+frameworkVersion: '3.40.0'
+configValidationMode: error
+
+provider:
+  name: aws
+  stage: local
+  region: us-east-1
+  runtime: nodejs22.x
+
+plugins:
+  - ./plugins/scaffold-only.cjs

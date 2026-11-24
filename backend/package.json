@@ -1,0 +1,16 @@
+{
+  "name": "@heraap/backend",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "22.23.5",
+    "npm": "10.9.9"
+  },
+  "scripts": {
+    "check": "node --check plugins/scaffold-only.cjs"
+  },
+  "devDependencies": {
+    "serverless": "3.40.0",
+    "serverless-localstack": "1.3.1"
+  }
+}
