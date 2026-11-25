@@ -42,36 +42,48 @@ anterior sigue disponible en el historial de git.
   0 aprobaciones de terceros, historia lineal (squash), sin force-push.
 - Cada módulo nuevo debe incluir pruebas unitarias propias, además de los
   controles existentes (`npm run check`, tests, actionlint si se toca `.github/`).
+- Ningún valor de `.env` se commitea ni se inyecta como variable plana en el
+  despliegue: se publica como entrada del secreto en LocalEmu Secrets Manager y
+  las Lambdas lo leen con el SDK. `.env` queda solo como fuente local de carga.
 - No tocar AWS real. No ejecutar `npm audit fix --force` ni cambiar Serverless
   como efecto colateral de otra tarea.
 - Sin autorización no se fusiona, no se cierran PRs ni se alteran protecciones.
 
 ## 3. Backlog aprobado pendiente
 
-### Tarea 0 — Base de datos relacional para credenciales
+### Tarea 0 — Base de datos relacional y secretos
 
-Objetivo: almacenar usuarios, identidades y sesiones en MariaDB dentro del stack
-del proyecto, preparado para un RDS MariaDB cuando exista infraestructura real.
+Objetivo: almacenar usuarios, identidades y sesiones en PostgreSQL, con las
+credenciales y la configuración sensible en Secrets Manager, preparado para un
+RDS PostgreSQL cuando exista infraestructura real.
+
+Decisión tomada (2026-11-25): se usa el contenedor `postgresql` existente
+(PostgreSQL 17.4, datos en `/DATA/AppData/postgresql/data`), que ya aloja una
+base por aplicación (`coaching`, `fecu`, `finanzas`, `fecubv`). Se creará la base
+`heraap` y el rol `heraap`, aislados de las demás. Las Lambdas lo alcanzan desde
+la red `heraap-local` por `172.18.0.1:5432` o por la IP LAN
+`192.168.100.9:5432`; el nombre `postgresql` no resuelve desde esa red.
 
 Alcance mínimo:
 
+- Base `heraap` y rol `heraap` con permisos solo sobre su base y su esquema;
+  contraseña generada para el laboratorio y guardada únicamente en el secreto.
 - Esquema versionado (`schema.sql` + migraciones idempotentes) con tablas de
   usuarios, identidades externas (Google), sesiones y auditoría básica.
-- Recurso declarado en el stack del backend junto a DynamoDB y S3, con
-  credenciales por variables de entorno y sin secretos en el repositorio.
+- Secreto `heraap/config` en LocalEmu Secrets Manager con JSON de configuración
+  (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y, en su momento,
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`). Lo crea o actualiza el script de
+  despliegue desde `.env`, con `ClientRequestToken` UUID porque LocalEmu lo exige
+  en `CreateSecret`/`PutSecretValue`.
+- Lectura del secreto desde las Lambdas con `@aws-sdk/client-secrets-manager`,
+  caché en memoria por ejecución y política IAM limitada al ARN del secreto.
 - Script de arranque/verificación de la base integrado en los scripts locales.
-- Pruebas unitarias del acceso a datos (conexión simulada o contenedor efímero).
+- Pruebas unitarias del acceso a datos (conexión simulada) y de la carga del
+  secreto, incluyendo el caso de secreto ausente o JSON inválido.
 
-Decisión requerida: LocalEmu 1.4.0 **no implementa RDS**. Verificado el
-2026-11-25: `DescribeDBInstances` devuelve lista vacía y `DescribeDBEngineVersions`
-responde `InternalFailure: ... has not been implemented`. Por tanto
-`AWS::RDS::DBInstance` no puede desplegarse en el laboratorio. Opciones:
-
-1. (Recomendada) Contenedor MariaDB fijado por versión en la red `heraap-local`,
-   conexión por variables de entorno y el `AWS::RDS::DBInstance` documentado como
-   objetivo de producción, no desplegado en local.
-2. Mantener solo DynamoDB para identidades y sesiones, descartando MariaDB.
-3. Posponer la tarea hasta disponer de AWS real o de soporte RDS en LocalEmu.
+Descartado: `AWS::RDS::DBInstance` no se despliega en LocalEmu 1.4.0 porque RDS no
+está implementado (`DescribeDBEngineVersions` responde `InternalFailure`); queda
+solo como objetivo de producción.
 
 ### Tarea 1 — Login con Google
 
@@ -81,16 +93,17 @@ Alcance mínimo:
 
 - Flujo OAuth 2.0/OIDC con Google: botón de acceso, callback, verificación del
   `id_token` contra el JWKS de Google (emisor, audiencia, expiración, nonce).
-- Alta o vinculación del usuario en MariaDB a partir del `sub` de Google.
+- Alta o vinculación del usuario en PostgreSQL a partir del `sub` de Google.
 - Sesión propia (cookie `HttpOnly`, `Secure`, `SameSite`) emitida por el backend,
   con expiración y cierre de sesión.
 - Endpoint de identidad (`GET /sesion`) y protección de las rutas existentes.
 - Frontend: estados de carga/error, usuario identificado y cierre de sesión.
 - Pruebas unitarias del callback, validación del token y creación de sesión.
 
-Decisiones requeridas: client ID/secret de Google (nunca en el repo), URI de
-redirección con el túnel HTTPS, alcance (`openid email profile`) y política de
-sesión (duración, renovación, revocación).
+Decisiones requeridas: client ID/secret de Google (guardados en el secreto
+`heraap/config` de Secrets Manager, nunca en el repo), URI de redirección con el
+túnel HTTPS, alcance (`openid email profile`) y política de sesión (duración,
+renovación, revocación).
 
 ### Tarea 2 — Acceso seguro y endurecimiento
 
@@ -121,6 +134,12 @@ Alcance mínimo:
 - Runner `heraap-local-main` (usuario `heraap-runner`) con hook que rechaza PR,
   forks, features y otros workflows; solo publica `main`.
 - Node global del servidor no coincide con el pin: usar el binario fijado.
+- PostgreSQL 17.4 en el contenedor `postgresql` (red `n8n_net`, publica 5432 en
+  todas las interfaces). Base `heraap` y rol `heraap` propios. Alcanzable desde
+  `heraap-local` por `172.18.0.1:5432` o `192.168.100.9:5432`.
+- Secrets Manager de LocalEmu operativo: `CreateSecret`, `GetSecretValue`,
+  `PutSecretValue` y `DeleteSecret` verificados; `ListSecrets` responde vacío
+  cuando no hay secretos. Exige `ClientRequestToken` UUID en create y put.
 
 ## 5. Herramientas y comandos
 
@@ -156,5 +175,6 @@ Playwright requiere Chromium y no está instalado; reinstalarlo bajo
 
 ## 7. Próximo paso
 
-Solicitar aprobación de la tarea 0 y de la decisión de base de datos (opción 1,
-2 o 3). Sin esa decisión no se crea `feat/heraap-011` ni se modifica el stack.
+Solicitar aprobación para ejecutar la tarea 0 (PostgreSQL + secretos) en
+`feat/heraap-011`. Las tareas 1 y 2 quedan descritas, pero no se inician sin
+aprobación expresa.
