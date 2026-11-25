@@ -2,8 +2,9 @@
 
 Laboratorio serverless para desarrollar con React, Lambda, API Gateway REST,
 DynamoDB y S3 sobre LocalEmu. Esta fase prepara la estructura del repositorio
-y un frontend base compilable. La aplicación de registros y el despliegue aún
-no están implementados.
+y un frontend base compilable. LocalEmu ya dispone de infraestructura Docker con
+persistencia y red de Lambdas. La aplicación de registros y su despliegue aún no
+están implementados.
 
 ## Versiones fijadas
 
@@ -16,7 +17,7 @@ no están implementados.
 | TypeScript | 5.9.3 |
 | Serverless Framework | 3.40.0 |
 | Adaptador serverless-localstack | 1.3.1 |
-| LocalEmu previsto para Docker | 1.4.0 |
+| LocalEmu en Docker | 1.4.0 (digest fijado en Compose) |
 
 Los manifiestos usan versiones exactas y cada paquete incluye su lockfile.
 Serverless v3 está sin mantenimiento y se reserva para este laboratorio sin cuenta
@@ -26,10 +27,11 @@ explícita y pruebas en la tarea de backend; aún no está validada.
 ## Requisitos
 
 - Debian o WSL2 con Debian, Bash y Git.
+- Python 3 para revisar la sintaxis de las pruebas de infraestructura.
 - Node.js y npm en las versiones indicadas; se recomienda nvm.
 - Acceso al registro npm para instalar dependencias.
-- Docker y LocalEmu no son necesarios para compilar este esqueleto. Se verificarán
-  en las tareas posteriores de infraestructura y despliegue.
+- Docker y LocalEmu no son necesarios para compilar el frontend. Para ejecutar
+  el laboratorio se requiere Docker y Compose v2; ver [infra/README.md](infra/README.md).
 
 ## Instalación y desarrollo
 
@@ -64,9 +66,28 @@ npm --prefix frontend run preview
 ```
 
 `check` valida versiones, tipos TypeScript, sintaxis del plugin inicial y sintaxis
-Bash. `build` genera `frontend/dist/` con rutas relativas (`base: './'`).
+Bash y Python. `build` genera `frontend/dist/` con rutas relativas (`base: './'`).
 El preview escucha en loopback (puerto 4173 por defecto).
-Todavía no existen pruebas funcionales del backend ni de integración.
+Todavía no existen pruebas funcionales de la aplicación de registros. Las pruebas
+de infraestructura están disponibles mediante `npm run infra:verify` e
+`npm run infra:verify-persistence`; esta última reinicia el emulador.
+
+## Laboratorio Docker
+
+```bash
+npm run infra:up
+npm run infra:status
+npm run infra:verify
+```
+
+Dashboard local: `http://127.0.0.1:4566/_localemu/dashboard`. Para acceder desde la
+LAN, configurar `LOCALEMU_LAN_IP` con la IP del servidor en `.env` y ejecutar
+`npm run infra:up`; el dashboard y las APIs quedan disponibles también en esa IP.
+El ejemplo usa loopback como valor por defecto.
+Las Lambdas usan el endpoint
+interno `http://localemu:4566`. El emulador conserva los datos en el volumen
+`heraap-localemu-data`. Para operar sin Node/npm, usar `bash scripts/localemu.sh`.
+Respaldo, migración y retorno se documentan en [infra/README.md](infra/README.md).
 
 ## Configuración
 
@@ -90,7 +111,7 @@ backend/                  Herramientas y esqueleto de serverless.yml
   lib/                    Reservado para utilidades de backend
   plugins/                Bloqueo temporal del despliegue
   tests/                  Reservado para pruebas del backend
-infra/                    Documentación de la futura migración a Docker
+infra/                    Compose de LocalEmu y procedimiento de retorno
 scripts/                  Comprobación del entorno y entrada de despliegue
 .github/workflows/        Comprobaciones de PR en runners de GitHub
 ```
@@ -120,14 +141,16 @@ requiere conocer su usuario de GitHub.
 
 La base local de `main` se inicializa con un commit vacío para poder presentar el
 primer cambio completo mediante PR desde `feat/heraap-001`.
+Si una tarea depende de un PR todavía pendiente, su rama parte de ese cambio y
+su PR apunta temporalmente a la rama anterior. Tras integrar la dependencia, se
+debe cambiar la base a `main`. Las comprobaciones de PR también cubren esas ramas.
 
 ## Próximas tareas aprobables
 
-1. Migrar LocalEmu a Docker con respaldo, persistencia y red para las Lambdas.
-2. Implementar backend, recursos e integración con Node.js 22.
-3. Implementar el formulario y la consulta por ID.
-4. Implementar despliegue local idempotente y pruebas de aceptación.
-5. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
+1. Implementar backend, recursos e integración con Node.js 22.
+2. Implementar el formulario y la consulta por ID.
+3. Implementar despliegue local idempotente y pruebas de aceptación.
+4. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
 
 `npm run deploy:local` existe como punto de entrada, pero termina con código 1
 y un mensaje claro hasta implementar esa tarea. No hay un workflow de despliegue
@@ -140,6 +163,5 @@ activo ni se ha registrado un runner en el servidor.
   dentro del paquete correspondiente.
 - Error de Serverless indicando backend pendiente: es el bloqueo esperado de esta
   estructura inicial. No quitarlo para intentar un despliegue.
-- LocalEmu inaccesible en 4566: revisar el servicio existente antes de arrancar otro
-  proceso. La migración a Docker aún está pendiente; no ejecutar `docker compose up`
-  de otro laboratorio que use el mismo puerto.
+- LocalEmu inaccesible en 4566: ejecutar `bash scripts/localemu.sh status` y `logs`.
+  No arrancar otro laboratorio en el mismo puerto ni el antiguo proceso Python.
