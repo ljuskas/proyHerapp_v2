@@ -40,6 +40,22 @@ PY
 )"
 VITE_API_BASE_URL="$api_path" npm run build
 
+python3 - <<'PY'
+import json, os, subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+data = {
+    'commit': commit,
+    'workingTreeDirty': bool(subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], text=True).strip()),
+    'deployedAt': datetime.now(timezone.utc).isoformat(),
+    'source': 'github-actions' if os.environ.get('GITHUB_ACTIONS') == 'true' else 'manual',
+}
+if data['source'] == 'github-actions':
+    data['runUrl'] = f"https://github.com/ljuskas/proyHerapp_v2/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+Path('frontend/dist/deployment.json').write_text(json.dumps(data, indent=2) + '\n')
+PY
+
 staging="$(docker exec heraap-localemu mktemp -d /tmp/heraap-publish.XXXXXXXX)"
 docker cp frontend/dist/. "heraap-localemu:$staging"
 # Publicar assets antes del HTML y evitar que el navegador conserve un índice viejo.
@@ -49,6 +65,9 @@ bash scripts/localemu.sh aws s3 cp "$staging/index.html" s3://heraap-frontend-lo
   --content-type 'text/html; charset=utf-8' --cache-control 'no-cache'
 curl --noproxy '*' --fail --silent http://127.0.0.1:4566/heraap-frontend-local/index.html > .state/frontend-published.html
 cmp frontend/dist/index.html .state/frontend-published.html
+bash scripts/localemu.sh aws s3 cp "$staging/deployment.json" s3://heraap-frontend-local/deployment.json \
+  --content-type 'application/json' --cache-control 'no-cache'
+cp frontend/dist/deployment.json .state/last-deployment.json
 
 echo 'Despliegue completo en LocalEmu.'
 echo 'Frontend local: http://127.0.0.1:4566/heraap-frontend-local/index.html'

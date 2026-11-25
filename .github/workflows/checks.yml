@@ -3,8 +3,7 @@ name: Comprobaciones
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
@@ -42,6 +41,8 @@ jobs:
         run: npm run test:backend
       - name: Probar cliente frontend
         run: npm run test:frontend
+      - name: Probar restricciones del runner
+        run: npm run test:runner
       - name: Validar Compose
         run: bash scripts/localemu.sh config
       - name: Compilar frontend

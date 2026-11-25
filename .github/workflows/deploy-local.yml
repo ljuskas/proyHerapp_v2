@@ -1,0 +1,48 @@
+name: Desplegar en LocalEmu
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: heraap-local-deployment
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Validar main
+    uses: ./.github/workflows/checks.yml
+  deploy:
+    name: Publicar main en LocalEmu
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'ljuskas/proyHerapp_v2'
+    runs-on: [self-hosted, linux, x64, heraap-local-main]
+    timeout-minutes: 20
+    steps:
+      - name: Obtener el commit integrado
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Preparar Node.js fijado
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Desplegar backend y frontend
+        run: npm run deploy:local
+      - name: Comprobar API real
+        run: npm run test:backend:local
+      - name: Registrar versión y URLs
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.loads(Path('.state/last-deployment.json').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f"Commit desplegado: `{data['commit']}`\n\n")
+              summary.write('Frontend: https://local.deptofeliz.uk/heraap-frontend-local/index.html\n\n')
+              summary.write('Versión: https://local.deptofeliz.uk/heraap-frontend-local/deployment.json\n')
+          PY

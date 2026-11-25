@@ -4,7 +4,8 @@ Laboratorio serverless para desarrollar con React, Lambda, API Gateway REST,
 DynamoDB y S3 sobre LocalEmu. Incluye backend de creación y consulta de registros,
 infraestructura Docker con persistencia y un frontend funcional de creación y consulta.
 `npm run deploy:local` despliega backend y frontend en S3 local.
-La automatización desde `main` sigue pendiente.
+El workflow de despliegue tras fusionar en `main` está preparado; su activación
+requiere integrar los archivos del workflow en esa rama.
 
 ## Versiones fijadas
 
@@ -68,6 +69,7 @@ con la URL del backend. Ver [frontend/README.md](frontend/README.md).
 npm run check
 npm run test:backend
 npm run test:frontend
+npm run test:runner
 npm run build
 npm --prefix frontend run preview
 ```
@@ -214,10 +216,22 @@ Playwright requiere Chromium instalado; ver frontend/README.md. Las pruebas
 reales crean y conservan registros de prueba. Para verificar conservación tras
 otro despliegue, ejecutar `node backend/tests/integration-local.cjs verify-saved`.
 
-## Próxima tarea aprobable
+## Despliegue automático desde main
 
-Preparar runner dedicado y workflow de despliegue tras integrar en `main`.
-No hay un workflow de despliegue activo ni un runner registrado en el servidor.
+El runner dedicado `heraap-local-main` está instalado como servicio con usuario
+propio. `.github/workflows/deploy-local.yml` responde solo a push de `main`,
+valida el commit en GitHub y después despliega en el servidor. Un PR solo valida;
+su fusión en main dispara la publicación. No ejecutar PR de forks en el servidor.
+Instalación, hooks, operación y verificación: [infra/runner.md](infra/runner.md).
+
+La integración inicial del workflow en `main` sigue pendiente de PR y revisión.
+Hasta entonces, el runner puede estar online, pero no hay despliegue automático
+activo. Ver [status.md](status.md) antes de continuar el trabajo.
+
+Cada publicación incluye `deployment.json` con SHA, fecha UTC, origen manual o
+GitHub Actions y, para este último, enlace al run. Se puede consultar en:
+`https://local.deptofeliz.uk/heraap-frontend-local/deployment.json`.
+El SHA debe coincidir con el commit publicado; el estado final se revisa en Actions.
 
 ## Troubleshooting
 
