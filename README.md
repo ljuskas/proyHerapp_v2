@@ -36,11 +36,19 @@ de Google. La sesión se guarda en PostgreSQL (solo el hash del token) y viaja e
 una cookie `HttpOnly; Secure; SameSite=Lax`.
 
 Para habilitar el flujo real hay que crear un cliente OAuth 2.0 de tipo
-«aplicación web» en Google Cloud, autorizar la URI
-`https://local.deptofeliz.uk/heraap-frontend-local/` y añadir
-`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` y
-`FRONTEND_URL` a `.env`; después `npm run secrets:publish`. Sin esas claves el
-botón de acceso devuelve 503 y el resto de la app sigue funcionando.
+«aplicación web» en Google Cloud y autorizar como URI de redirección la del
+callback del backend, con el `ApiId` del despliegue:
+
+```
+https://local.deptofeliz.uk/_aws/execute-api/<API_ID>/local/auth/google/callback
+```
+
+Después, en `.env`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`GOOGLE_REDIRECT_URI` (esa misma URI), `FRONTEND_URL`
+(`https://local.deptofeliz.uk/heraap-frontend-local/`) y `npm run secrets:publish`.
+Sin esas claves el botón de acceso devuelve 503 y el resto de la app sigue
+funcionando. Si el `ApiId` cambiara, hay que actualizar la URI autorizada en
+Google Cloud y `GOOGLE_REDIRECT_URI`.
 
 En el laboratorio existe un atajo `POST /auth/dev` con `{"email":"..."}` que crea
 una sesión sin Google. Solo está activo con `DEV_LOGIN_ENABLED=1`, que el stack
