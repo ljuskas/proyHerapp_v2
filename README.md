@@ -142,10 +142,16 @@ npm run infra:status
 npm run infra:verify
 ```
 
-Dashboard local: `http://127.0.0.1:4566/_localemu/dashboard`. Para acceder desde la
-LAN, configurar `LOCALEMU_LAN_IP` con la IP del servidor en `.env` y ejecutar
-`npm run infra:up`; el dashboard y las APIs quedan disponibles también en esa IP.
-El ejemplo usa loopback como valor por defecto.
+El puerto 4566 se publica solo en loopback y el túnel de Cloudflare publica
+únicamente `/_aws/execute-api/*` y `/heraap-frontend-local/*`; el WAF de la zona
+bloquea `/` y `/_localemu/*`. El dashboard está desactivado por defecto
+(`DASHBOARD_API_OPEN=0`); para abrirlo un momento en el servidor:
+
+```bash
+DASHBOARD_API_OPEN=1 bash scripts/localemu.sh up   # volver a 0 al terminar
+```
+
+El endpoint `/_localemu/health` sigue disponible para los despliegues.
 Las Lambdas usan el endpoint
 interno `http://localemu:4566`. El emulador conserva los datos en el volumen
 `heraap-localemu-data`. Para operar sin Node/npm, usar `bash scripts/localemu.sh`.

@@ -44,16 +44,17 @@ VITE_API_BASE_URL=/_aws/execute-api/API_ID/local
 ```
 
 Recompilar y publicar siguiendo los comandos de abajo. Así, las solicitudes de
-creación y consulta usan el mismo origen que el HTML, tanto por LAN como por
+creación y consulta usan el mismo origen que el HTML, también en
 `https://local.deptofeliz.uk/heraap-frontend-local/index.html`. Una URL de API
 `http://192.168.100.9:4566` incorporada al build no funciona para clientes de
 Internet y el navegador bloquea HTTP desde una página HTTPS.
 
-El túnel existente se administra en Cloudflare: el servicio del hostname
-`local.deptofeliz.uk` debe ser `http://192.168.100.9:4566` (tipo HTTP).
-El acceso del navegador sigue siendo HTTPS. Usar HTTPS hacia esa IP provoca un
-502 por el certificado local, que corresponde a `127.0.0.1`.
-Esta ruta de túnel publica el puerto de LocalEmu completo, incluido su dashboard.
+El túnel se administra en Cloudflare: el servicio del hostname
+`local.deptofeliz.uk` es `http://127.0.0.1:4566` (tipo HTTP), y una regla WAF de
+la zona bloquea `/` y `/_localemu/*`. Así quedan publicados solo
+`/_aws/execute-api/*` y `/heraap-frontend-local/*`; el dashboard de LocalEmu no
+sale del servidor. El acceso del navegador sigue siendo HTTPS y usar HTTPS hacia
+la IP provoca un 502 por el certificado local, que corresponde a `127.0.0.1`.
 
 Para verificar el build público con los dos navegadores de prueba:
 

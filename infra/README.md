@@ -39,35 +39,26 @@ al consultar la API inmediatamente después de arrancar.
   Lambda se refiere a esa Lambda, no al emulador.
 - Dashboard: `http://127.0.0.1:4566/_localemu/dashboard`.
 
-El contenedor escucha en todas sus interfaces internas. Por defecto, Docker
-publica el puerto solamente en el loopback del servidor. Para habilitar acceso
-desde la LAN, configurar la IP del servidor en el `.env` de la raíz:
+El contenedor escucha en todas sus interfaces internas, pero Docker publica el
+puerto 4566 **solo en el loopback del servidor**. No hay publicación en la LAN ni
+en `0.0.0.0`: el emulador completo, su dashboard y sus APIs AWS quedan fuera de
+la red, y el túnel de Cloudflare solo publica `/_aws/execute-api/*` y
+`/heraap-frontend-local/*` (el resto lo bloquea el WAF de la zona).
 
-```dotenv
-LOCALEMU_LAN_IP=192.168.100.9
-```
-
-Después ejecutar `bash scripts/localemu.sh up`. El script lee explícitamente ese
-archivo, independientemente del directorio de trabajo. Si no existe, usa
-`.env.example`, que mantiene el acceso solo por loopback. Compose deduplica las
-dos publicaciones cuando ambas apuntan a `127.0.0.1`.
-
-Con esa configuración, el dashboard está en
-`http://192.168.100.9:4566/_localemu/dashboard`, además de loopback. También quedan
-accesibles las APIs AWS del emulador en esa IP. `EXTRA_CORS_ALLOWED_ORIGINS` se
-configura con ese mismo origen para que carguen los recursos y las peticiones
-del dashboard. La IP propia de cada servidor queda en `.env`, excluido de Git.
-
-Como alternativa al acceso LAN, usar un túnel SSH:
+`DASHBOARD_API_OPEN=0` (valor por defecto) desactiva la API del dashboard, que
+quedó así fuera de la red y de cualquier contenedor del bridge. El endpoint de
+salud `/_localemu/health` sigue disponible porque lo usan los despliegues. Para
+abrir el dashboard de forma temporal en el propio servidor:
 
 ```bash
-ssh -L 4566:127.0.0.1:4566 usuario@servidor
+DASHBOARD_API_OPEN=1 bash scripts/localemu.sh up   # y volver a 0 al terminar
 ```
 
-Abrir el dashboard en el navegador del cliente usando esa misma URL local.
-`DASHBOARD_API_OPEN=1` permite las peticiones que llegan al contenedor por el
-bridge Docker. La publicación LAN se limita a la IP configurada, sin usar
-`0.0.0.0` como dirección de publicación del host.
+Desde otro equipo, sumar `ssh -L 4566:127.0.0.1:4566 usuario@servidor` y abrir
+`http://127.0.0.1:4566/_localemu/dashboard` mientras esté habilitado.
+
+`EXTRA_CORS_ALLOWED_ORIGINS` queda en `http://127.0.0.1:4566`, el único origen
+desde el que se abre el dashboard.
 
 El entrypoint oficial ajusta el grupo del socket Docker y ejecuta LocalEmu con el
 usuario `localemu`. No se modifica el permiso del socket del host. Docker permite
@@ -192,5 +183,5 @@ El retorno al proceso Python está documentado; no se ejecutó un ensayo complet
 de retorno después de la migración. La instalación anterior y el respaldo se
 conservaron. No se ha probado un reinicio completo del servidor.
 
-La corrección posterior de acceso LAN añade una segunda publicación mediante
-`LOCALEMU_LAN_IP`, manteniendo el volumen y la publicación de loopback.
+La publicación en LAN se retiró al endurecer el laboratorio: hoy solo existe
+la de loopback, y el acceso remoto al dashboard va por un túnel SSH.

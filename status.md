@@ -8,10 +8,10 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 
 ## 1. Punto de partida verificado
 
-- `main` = `a049ffd` (*docs: actualiza la tarea 15 con los hallazgos de
-  seguridad (#15)*), única rama, local y remota.
-- Último despliegue automático completo en `24d438f`; la tarea 16 cambia el
-  stack y se despliega al fusionar su PR.
+- `main` = `ed0707a` (*fix: retira el acceso de desarrollo sin Google (#16)*),
+  única rama, local y remota.
+- Despliegue automático correcto en `ed0707a` (manifiesto público,
+  `source github-actions`, `workingTreeDirty false`).
 - API protegida: sin cookie, `POST /registros` y `GET /registros/{id}` responden 401.
 - Sin endpoint para crear sesiones: se retiraron `POST /auth/dev`, su bandera y
   su handler (tarea 16). Las pruebas usan `backend/tests/soporte/sesion-prueba.cjs`.
@@ -34,7 +34,8 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 | 13 | URI de redirección del callback | `2bc239f` (PR #11) |
 | 14 | `FRONTEND_URL` con `index.html` | `24d438f` (PR #13) |
 | 15 | Hallazgos de seguridad documentados | `a049ffd` (PR #15) |
-| 16 | Retiro del acceso de desarrollo | PR #16 |
+| 16 | Retiro del acceso de desarrollo | `ed0707a` (PR #16) |
+| 17 | Cierre del túnel y del emulador | PR #17 |
 
 ### Base de datos y secretos (tarea 11)
 
@@ -71,15 +72,14 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 
 ## 3. Pendiente
 
-### Tareas 17-24 — Endurecimiento del laboratorio
+### Tareas 18-24 — Endurecimiento del laboratorio
 
 Se ejecutan en este orden, cada una en su rama `feat/heraap-NNN`, con aprobación
 previa y aprobación aparte del mensaje de commit.
 
 | # | Tarea | Alcance | Aceptación |
 | --- | --- | --- | --- |
-| 17 | Cerrar el túnel y el emulador | Reglas de ingress en Cloudflare: solo `/_aws/execute-api/*` y `/heraap-frontend-local/*`; `DASHBOARD_API_OPEN=0`; 4566 solo en loopback; rotar el token del túnel | `/_localemu/health` y `ListSecrets` públicos dejan de responder |
-| 18 | Rotar lo expuesto | Nueva `DB_PASSWORD` y `GOOGLE_CLIENT_SECRET`, republicar el secreto y redesplegar | Las claves antiguas no sirven y el login sigue funcionando |
+| 18 | Rotar lo expuesto | Nueva `DB_PASSWORD` y `GOOGLE_CLIENT_SECRET`, republicar el secreto y redesplegar; rotar también el token del túnel | Las claves antiguas no sirven y el login sigue funcionando |
 | 19 | Aislar runner y pipeline | `CODEOWNERS` de `.github/`, `scripts/` e `infra/`; revisión obligatoria; runner en VM dedicada | Un PR que toca un workflow no se fusiona sin revisión |
 | 20 | PostgreSQL seguro | 5432 solo en red privada, TLS con CA propia y `verify-full`, rol con privilegios mínimos | Sin TLS la conexión se rechaza; API y migraciones funcionan |
 | 21 | `state` ligado al navegador | Cookie temporal con el hash del `state`, verificada en el callback, con vencimiento y uso único | `state` válido sin cookie y doble uso rechazados |
@@ -134,9 +134,14 @@ previa y aprobación aparte del mensaje de commit.
   cambia, hay que actualizar la URI autorizada en Google Cloud y
   `GOOGLE_REDIRECT_URI`.
 - Frontend: `https://local.deptofeliz.uk/heraap-frontend-local/index.html`
-  (siempre con `index.html`). LAN: `http://192.168.100.9:4566/heraap-frontend-local/index.html`.
-- El túnel Cloudflare publica el puerto 4566; las cookies solo funcionan por
-  HTTPS, no por la IP LAN en claro.
+  (siempre con `index.html`).
+- El puerto 4566 se publica solo en loopback; no hay acceso por LAN.
+- El túnel publica `local.deptofeliz.uk` hacia `http://127.0.0.1:4566`, y una
+  regla WAF de la zona bloquea `/` y `/_localemu/*`. Las cookies solo funcionan
+  por HTTPS.
+- Dashboard desactivado (`DASHBOARD_API_OPEN=0`); para abrirlo un momento:
+  `DASHBOARD_API_OPEN=1 bash scripts/localemu.sh up` y volver a 0. El endpoint
+  `/_localemu/health` sigue disponible para los despliegues.
 - PostgreSQL 17.4 en el contenedor `postgresql` (red `n8n_net`), alcanzable
   desde `heraap-local` por `172.18.0.1:5432` o `192.168.100.9:5432`.
 - Runner `heraap-local-main` (usuario `heraap-runner`) con hook que solo
@@ -176,9 +181,9 @@ HERAAP_E2E_FRONTEND_URL=https://local.deptofeliz.uk/heraap-frontend-local/index.
 - Las pruebas reales crean registros que se conservan; no hay borrado ni
   listado todavía.
 - `.state/`, `.env*` y los respaldos están ignorados: nunca publicar credenciales.
-- El túnel publicó todo el puerto 4566 y el secreto fue legible: `DB_PASSWORD`
-  y `GOOGLE_CLIENT_SECRET` se consideran comprometidos hasta completar las
-  tareas 17 y 18.
+- El túnel publicó todo el puerto 4566 hasta el 2026-11-25 y el secreto fue
+  legible: `DB_PASSWORD` y `GOOGLE_CLIENT_SECRET` siguen considerándose
+  comprometidos hasta completar la tarea 18.
 - Se revocaron las sesiones de las cuentas que habían usado el acceso de
   desarrollo (5 sesiones de 3 cuentas, 2026-11-25); el login con Google es otra
   vez el único camino de acceso.
