@@ -2,7 +2,7 @@ name: Comprobaciones
 
 on:
   pull_request:
-    branches: [main, 'feat/heraap-*']
+    branches: [main]
   push:
     branches: [main]
 

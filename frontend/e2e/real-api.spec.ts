@@ -3,6 +3,10 @@ import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 test.skip(process.env.HERAAP_E2E_REAL_API !== '1', 'Requiere backend desplegado en LocalEmu.');
+// El primer acceso puede arrancar el contenedor Lambda. Esperar el timeout
+// del cliente (15 s) antes de declarar fallida una respuesta real.
+test.use({ actionTimeout: 20000 });
+test.setTimeout(60000);
 
 test('flujo real: crear, recargar y consultar el registro conservado', async ({ page }, testInfo) => {
   const errors: string[] = [];
@@ -12,7 +16,7 @@ test('flujo real: crear, recargar y consultar el registro conservado', async ({ 
   await page.getByLabel('Nombre', { exact: true }).fill(nombre);
   await page.getByRole('button', { name: 'Crear registro', exact: true }).click();
   const create = page.getByRole('region', { name: 'Nuevo registro' });
-  await expect(create.getByRole('status').filter({ hasText: 'Registro creado' })).toBeVisible();
+  await expect(create.getByRole('status').filter({ hasText: 'Registro creado' })).toBeVisible({ timeout: 20000 });
   const id = await create.locator('code').textContent();
   expect(id).toBeTruthy();
   await create.getByRole('button', { name: 'Copiar ID' }).click();
@@ -21,7 +25,7 @@ test('flujo real: crear, recargar y consultar el registro conservado', async ({ 
   await expect(page.getByLabel('ID del registro', { exact: true })).toHaveValue(id!);
   await page.getByRole('button', { name: 'Buscar registro', exact: true }).click();
   const query = page.getByRole('region', { name: 'Consultar registro' });
-  await expect(query.getByRole('status').filter({ hasText: 'Registro encontrado' })).toBeVisible();
+  await expect(query.getByRole('status').filter({ hasText: 'Registro encontrado' })).toBeVisible({ timeout: 20000 });
   await expect(query.getByText(nombre, { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);

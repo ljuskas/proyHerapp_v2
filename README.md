@@ -3,8 +3,8 @@
 Laboratorio serverless para desarrollar con React, Lambda, API Gateway REST,
 DynamoDB y S3 sobre LocalEmu. Incluye backend de creación y consulta de registros,
 infraestructura Docker con persistencia y un frontend funcional de creación y consulta.
-La aplicación se puede publicar manualmente en S3 local. El comando de despliegue
-completo y la automatización desde `main` siguen pendientes.
+`npm run deploy:local` despliega backend y frontend en S3 local.
+La automatización desde `main` sigue pendiente.
 
 ## Versiones fijadas
 
@@ -119,14 +119,14 @@ su aplicación no se publica con este comando.
 ## Configuración
 
 `.env.example` contiene únicamente credenciales ficticias (`test`), región
-`us-east-1` y el endpoint local `http://127.0.0.1:4566`. La configuración se cargará
-de forma explícita cuando se implemente el despliegue; copiar el archivo no
+`us-east-1` y el endpoint local `http://127.0.0.1:4566`. Los scripts fijan el entorno
+de despliegue a LocalEmu; copiar el archivo no
 modifica los perfiles AWS del usuario.
 
 `VITE_API_BASE_URL` se define en `frontend/.env.local` para desarrollo y puede
 sobrescribirse en `frontend/.env.production.local` para el build. La API debe ser
-accesible desde el navegador del usuario. El futuro despliegue completo generará
-ese archivo a partir de los outputs de la pila.
+accesible desde el navegador del usuario. El despliegue completo usa una ruta relativa al origen
+a partir de los outputs de la pila, con prioridad sobre esos archivos.
 Los archivos `.env`, dependencias, builds y estado del emulador están excluidos de Git.
 
 ## Estructura
@@ -173,18 +173,51 @@ requiere conocer su usuario de GitHub.
 
 La base local de `main` se inicializa con un commit vacío para poder presentar el
 primer cambio completo mediante PR desde `feat/heraap-001`.
-Si una tarea depende de un PR todavía pendiente, su rama parte de ese cambio y
-su PR apunta temporalmente a la rama anterior. Tras integrar la dependencia, se
-debe cambiar la base a `main`. Las comprobaciones de PR también cubren esas ramas.
+Los commits se publican directamente en las ramas feature. Los PR se abren
+únicamente de feature hacia `main`; no se abren PR entre features. Si una tarea
+parte de cambios aún pendientes de integración, su futuro PR a `main` incluye esas
+dependencias. El despliegue automático se ejecutará después de fusionar el PR,
+mediante un push a `main`, nunca al abrir o actualizar el PR.
 
-## Próximas tareas aprobables
+## Despliegue local completo
 
-1. Implementar despliegue local completo y pruebas de aceptación.
-2. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
+Con Node/npm fijados y el laboratorio saludable (`npm run infra:up`), ejecutar:
 
-`npm run deploy:local` existe como punto de entrada, pero termina con código 1
-y un mensaje claro hasta implementar esa tarea. No hay un workflow de despliegue
-activo ni se ha registrado un runner en el servidor.
+```bash
+npm run deploy:local
+```
+
+El comando instala frontend y backend con `npm ci`, despliega la pila local,
+espera las Lambdas, obtiene los outputs y compila con una ruta de API relativa
+al origen. Sobrescribe `VITE_API_BASE_URL` solo para el proceso de build, sin
+modificar los archivos `.env` del desarrollador. Publica assets antes del HTML,
+verifica el índice publicado e imprime las URLs finales. No admite argumentos.
+Solo un despliegue completo puede ejecutarse a la vez.
+
+La publicación conserva assets anteriores para pestañas abiertas y usa nombres
+con hash y caché inmutable; el HTML lleva `Cache-Control: no-cache`. No limpia
+el bucket ni la tabla. Repetir el comando conserva los registros existentes.
+Si falla, devuelve un código distinto de cero; no revierte automáticamente los
+pasos completados. Los archivos temporales de publicación se limpian al salir.
+
+Abrir `http://IP_SERVIDOR:4566/heraap-frontend-local/index.html` o, con el túnel
+activo, `https://local.deptofeliz.uk/heraap-frontend-local/index.html`.
+Crear un nombre, copiar el ID, recargar y buscarlo. También se puede ejecutar:
+
+```bash
+npm run test:backend:local
+HERAAP_E2E_FRONTEND_URL=https://local.deptofeliz.uk/heraap-frontend-local/index.html \
+  npm run test:frontend:e2e:local
+```
+
+Playwright requiere Chromium instalado; ver frontend/README.md. Las pruebas
+reales crean y conservan registros de prueba. Para verificar conservación tras
+otro despliegue, ejecutar `node backend/tests/integration-local.cjs verify-saved`.
+
+## Próxima tarea aprobable
+
+Preparar runner dedicado y workflow de despliegue tras integrar en `main`.
+No hay un workflow de despliegue activo ni un runner registrado en el servidor.
 
 ## Troubleshooting
 

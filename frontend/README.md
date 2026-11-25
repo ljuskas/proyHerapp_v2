@@ -93,8 +93,8 @@ docker exec heraap-localemu rm -rf /tmp/heraap-frontend-dist
 
 Abrir `http://IP_SERVIDOR:4566/heraap-frontend-local/index.html`. `base: './'` y
 el enlace de inicio relativo permiten servir HTML/JS/CSS desde S3. Esta publicación
-es manual; el comando completo `npm run deploy:local` y el runner son tareas
-posteriores. `--delete` se limita al bucket frontend, sin cambiar DynamoDB.
+es la alternativa manual a `npm run deploy:local`, documentado en el README raíz.
+El runner sigue pendiente. `--delete` se limita al bucket frontend, sin cambiar DynamoDB.
 
 ## Pruebas
 
