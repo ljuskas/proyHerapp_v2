@@ -8,10 +8,11 @@ https://github.com/ljuskas/proyHerapp_v2.
 - Prompt original: `/mnt/storage2/DATA/proyectos-gpt/prompt_proyHeraap_v2.md`.
 - Checkout de desarrollo: `/mnt/storage2/DATA/proyectos-gpt/proyHerapp_v2`.
 - Implementación integrada desde `feat/heraap-007` mediante PR #5. Cierre
-  documental en `feat/heraap-008`. Consultar `git status` y `git log -5`
-  antes de actuar; este documento no fija su propio SHA.
-- Cada tarea nueva requiere aprobación del usuario. La tarea 7 y este archivo
-  están aprobados. No iniciar otras tareas por inferencia.
+  documental integrado mediante PR #6 (squash `a77c04d`). Consultar
+  `git status` y `git log -5` antes de actuar; este documento no fija su
+  propio SHA.
+- Cada tarea nueva requiere aprobación del usuario. Las tareas 7 y 9 y este
+  archivo están aprobados. No iniciar otras tareas por inferencia.
 - Commits semánticos en español, directamente en `feat/heraap-NNN`.
 - PR únicamente de feature a main. Nunca PR encadenados entre features.
 - El despliegue automático debe ocurrir al fusionar en main, no al abrir/actualizar
@@ -44,6 +45,8 @@ https://github.com/ljuskas/proyHerapp_v2.
 | Corrección Cloudflare | Frontend publicado con ruta API del mismo origen; crear/consultar por HTTPS verificado en escritorio y móvil |
 | 6. Deploy completo | `npm run deploy:local`, npm ci, deploy backend, outputs, build, publicación, caché y locks; dos despliegues y conservación de registros comprobados |
 | 7. CI/CD local | Completada: PR #5 fusionado, push main ejecutó validaciones y publicación en runner; SHA público y conservación comprobados |
+| 8. Cierre documental | PR #6 fusionado por squash en `a77c04d`; run 45543517947 validó y publicó en runner |
+| 9. Registro del despliegue de cierre | Este documento actualizado en `feat/heraap-009`, pendiente de PR a main |
 | Entrega a otro agente | Este status.md, README y guía infra/runner.md |
 
 ## Cobertura del prompt original
@@ -90,6 +93,13 @@ que terminó exitosamente: validaciones en GitHub y publicación en heraap-local
 El manifiesto HTTPS confirmó ese mismo SHA, origen github-actions y árbol limpio.
 El registro de prueba previo siguió disponible.
 
+Después, el usuario fusionó el PR #6 por squash con CI verde. `main` quedó en
+`a77c04d436ca742c25867ede48cb553e29838485` y el push disparó el
+[run 45543517947](https://github.com/ljuskas/proyHerapp_v2/actions/runs/45543517947):
+«Verificar estructura y build» 1m20s, «Publicar main en LocalEmu» 1m06s, ambos
+success. El manifiesto público pasó a `a77c04d…`, source github-actions, árbol
+limpio, deployedAt 2026-11-25T04:00:13Z; el registro `58de73bf-…` se conservó.
+
 El usuario confirmó que trabaja solo y autorizó quitar aprobaciones externas.
 GitHub exige PR y CI, con 0 aprobaciones de terceros; se conservan las otras
 protecciones, incluidas las aplicadas a administradores.
@@ -105,16 +115,21 @@ Commits previos relevantes:
 - `5bf9420`: acceso por túnel HTTPS (feat/heraap-005).
 - `26f3ac1`: despliegue completo (feat/heraap-006).
 
-El [PR #5](https://github.com/ljuskas/proyHerapp_v2/pull/5) está fusionado.
-Este cierre documental se prepara en feat/heraap-008 y debe pasar por PR a main.
-No crear PR entre features ni hacer push directo a main.
+Los PR [#5](https://github.com/ljuskas/proyHerapp_v2/pull/5) y
+[#6](https://github.com/ljuskas/proyHerapp_v2/pull/6) están fusionados. El
+[PR #1](https://github.com/ljuskas/proyHerapp_v2/pull/1) sigue abierto y debe
+cerrarse sin fusionar. Esta actualización de status.md se prepara en
+`feat/heraap-009` y debe pasar por PR a main. No crear PR entre features ni
+hacer push directo a main.
 
 ## Pendientes para el siguiente agente
 
 No quedan entregables funcionales del prompt inicial pendientes en Debian.
 Las nuevas funcionalidades requieren una tarea aprobada por el usuario.
 
-- Comprobar Actions y deployment.json para conocer el último SHA publicado.
+- Último SHA publicado verificado: `a77c04d` (run 45543517947); consultar
+  Actions y deployment.json antes de asumir otra cosa.
+- Fusionar el PR de `feat/heraap-009` cuando el usuario lo autorice.
 - Coordinar el cierre del PR #1 obsoleto; no fusionarlo.
 - Opcional: validación independiente WSL2 con systemd.
 - Mantener el runner y sus actualizaciones; no cambiar Serverless ni ejecutar
@@ -162,18 +177,22 @@ HERAAP_E2E_FRONTEND_URL=https://local.deptofeliz.uk/heraap-frontend-local/index.
   npm run test:frontend:e2e:local
 ```
 
-Playwright requiere Chromium. En esta máquina se instaló en
-`/tmp/heraap-playwright-browsers`: definir PLAYWRIGHT_BROWSERS_PATH para usarlo.
-Escritorio y móvil tienen escenarios reales; los escenarios controlados se omiten
-en ese modo por diseño. Para ejecutarlos: npm run test:frontend:e2e.
+Playwright requiere Chromium y no está instalado en este checkout. En la sesión
+anterior se usó `/tmp/heraap-playwright-browsers`, pero `/tmp` se vació; definir
+`PLAYWRIGHT_BROWSERS_PATH` tras reinstalarlo dentro de `.state/tools`. Escritorio y
+móvil tienen escenarios reales; los controlados se omiten en ese modo por diseño.
+Para ejecutarlos: npm run test:frontend:e2e.
 
-Herramientas temporales de la sesión, pueden desaparecer tras reiniciar:
+Herramientas reinstaladas el 2026-11-25 en `.state/tools/` (ignorado por git), porque
+`/tmp` se vacía entre sesiones:
 
-- Node fijado: `/tmp/heraap-tools/node-v22.23.5-linux-x64/bin`.
-- GitHub CLI: `/tmp/heraap-tools/gh_2.105.0_linux_amd64/bin/gh`.
-- Config CLI autenticada: `GH_CONFIG_DIR=/tmp/heraap-tools/github-auth`.
-  No mostrar sus archivos ni tokens. La conexión GitHub del agente es independiente.
-- Actionlint 1.7.12: `/tmp/heraap-tools/actionlint`; labels en `.github/actionlint.yaml`.
+- Node fijado: `.state/tools/node-v22.23.5-linux-x64/bin` (npm 10.9.9). Añadirlo al
+  PATH antes de `npm ci`, `npm run check` o los tests.
+- GitHub CLI 2.105.0: `.state/tools/gh_2.105.0_linux_amd64/bin/gh`, sin sesión
+  autenticada. No mostrar tokens ni archivos de config. La conexión GitHub del
+  agente es independiente y el usuario prefiere fusionar los PR él mismo.
+- Actionlint no está reinstalado; si se toca `.github/`, reinstalar 1.7.12 en
+  `.state/tools/` y validar con los labels de `.github/actionlint.yaml`.
 
 La instalación del runner y operaciones Docker requirieron ejecución fuera del
 sandbox. No cambiar permisos del socket Docker. No tocar otros servicios del host.
@@ -228,3 +247,10 @@ Consultar infra/runner.md para servicio, registro y diagnóstico.
 - verify-saved posterior al run confirmó el registro previo 58de73bf.
 - Estos son resultados de la primera integración. Para versiones posteriores,
   consultar Actions y el manifiesto público; un cambio de feature no despliega.
+- Verificación del 2026-11-25 tras fusionar el PR #6: `npm ci`, `setup` y
+  `npm run check` correctos con Node 22.23.5/npm 10.9.9; test:backend 9/9,
+  test:frontend 9/9, test:runner 3/3.
+- Run 45543517947 success; manifiesto en a77c04d con source github-actions y
+  árbol limpio; `index.html` respondió 200; GET del registro 58de73bf devolvió
+  200 con sus datos; verify-saved OK.
+- No se ejecutaron los E2E de Playwright: Chromium no estaba instalado.
