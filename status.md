@@ -1,195 +1,161 @@
-# Heraap v2 — estado verificado y base del próximo plan
+# Heraap v2 — estado, tareas realizadas y pendientes
 
 Actualizado: 2026-11-25 (America/Santiago). Repositorio público:
 <https://github.com/ljuskas/proyHerapp_v2>.
 
-Este documento sustituye al informe histórico. Conserva solo lo necesario para
-retomar el trabajo y redactar el prompt de las tareas pendientes. El detalle
-anterior sigue disponible en el historial de git.
+Este documento resume qué está hecho (con su commit), qué falta y lo necesario
+para retomar el trabajo. El detalle histórico completo vive en `git log`.
 
 ## 1. Punto de partida verificado
 
-- `main` = `14b8261cb472f460ddf74c67d22118173b4c7c01`. Es la única rama, local y
-  remota. No hay PR abiertos; el PR #1 (scaffold) quedó cerrado sin fusionar y
-  las ramas `feat/heraap-001…009` se eliminaron tras respaldarlas en
-  `.state/backup-ramas-feature-20261125.bundle` (local, ignorado por git).
-- Último despliegue automático: run
-  [45545102139](https://github.com/ljuskas/proyHerapp_v2/actions/runs/45545102139),
-  success. `deployment.json` público en `14b8261`, `source github-actions`,
-  `workingTreeDirty false`.
-- Comprobado tras ese despliegue: frontend
-  <https://local.deptofeliz.uk/heraap-frontend-local/index.html> responde 200 y
-  el registro `58de73bf-8740-4afa-9d1d-39870a524d70` responde 200 vía API.
-- Funcionalidad actual: crear registro (`POST /registros`) y consultarlo por ID
-  (`GET /registros/{id}`). No hay autenticación, listado, edición ni borrado.
-- Stack: LocalEmu 1.4.0 en Docker (imagen fijada por digest), API Gateway REST,
-  dos Lambdas Node.js 22, DynamoDB (`heraap-registros-local`, PK string) y S3
-  para el frontend React/Vite/TypeScript.
-- PostgreSQL 17.4 operativo con base y rol `heraap`: tablas `usuarios`,
-  `identidades`, `sesiones`, `auditoria` y `schema_migrations`. El secreto
-  `heraap/config` en LocalEmu agrupa toda la configuración de `.env`.
-- Acceso con Google implementado (PKCE, verificación de `id_token`, sesión en
-  PostgreSQL con cookie `HttpOnly; Secure`). Sin credenciales de Google aún:
-  falta crear el cliente OAuth autorizando la URI del callback
-  `https://local.deptofeliz.uk/_aws/execute-api/<API_ID>/local/auth/google/callback`
-  y publicar `GOOGLE_*` en el secreto.
-- Entorno local verificado con el pin del repo: `npm ci`, `npm run setup`,
-  `npm run check`, tests de backend 9/9, de frontend 9/9 y del hook del runner
-  3/3, con Node.js 22.23.5 y npm 10.9.9.
+- `main` = `24d438f` (*fix: redirige al index.html tras el login (#13)*). Es la
+  única rama, local y remota. No hay PR abiertos.
+- Último despliegue automático correcto: manifiesto público en `24d438f`,
+  `source github-actions`, `workingTreeDirty false`.
+- API protegida: sin cookie, `POST /registros` y `GET /registros/{id}` responden 401.
+- `POST /auth/dev` (login sin Google) solo existe en `stage: local`.
+- Sin rollback automático ni limpieza de assets históricos.
 
-## 2. Reglas de trabajo (vigentes)
+## 2. Tareas realizadas
 
-- Toda tarea nueva requiere aprobación explícita del usuario antes de empezar,
-  y aprobación aparte del mensaje antes de cada commit.
-- Commits semánticos en español, siempre dentro de `feat/heraap-NNN` creada
-  desde `main` actualizado.
-- PR únicamente de feature a `main`; nunca encadenados entre features ni push
-  directo a `main`. El merge lo realiza el usuario; el despliegue automático
-  ocurre al fusionar en `main`, no al abrir o actualizar el PR.
-- `main` está protegida: PR obligatorio, check «Verificar estructura y build»,
-  0 aprobaciones de terceros, historia lineal (squash), sin force-push.
-- Cada módulo nuevo debe incluir pruebas unitarias propias, además de los
-  controles existentes (`npm run check`, tests, actionlint si se toca `.github/`).
-- Ningún valor de `.env` se commitea ni se inyecta como variable plana en el
-  despliegue: se publica como entrada del secreto en LocalEmu Secrets Manager y
-  las Lambdas lo leen con el SDK. `.env` queda solo como fuente local de carga.
-- No tocar AWS real. No ejecutar `npm audit fix --force` ni cambiar Serverless
-  como efecto colateral de otra tarea.
-- Sin autorización no se fusiona, no se cierran PRs ni se alteran protecciones.
+| # | Tarea | Commit que la integró en `main` |
+| --- | --- | --- |
+| 1-3 | Repositorio, estructura, LocalEmu Docker, backend, frontend | `e5f8571` (PR #5) |
+| 4 | Corrección Cloudflare: API por el mismo origen | `e5f8571` |
+| 5 | Despliegue completo (`deploy:local`) | `e5f8571` |
+| 6 | CI/CD local con runner dedicado | `e5f8571` |
+| 7 | Integración y primera ejecución automática | `e5f8571` |
+| 8 | Cierre documental y entrega | `a77c04d` (PR #6) |
+| 9 | Registro del despliegue de cierre | `14b8261` (PR #7) |
+| 10 | Documento base del nuevo plan | `cdfb3f9` (PR #8) |
+| 11 | PostgreSQL + configuración por secretos | `b4a7eb7` (PR #9) |
+| 12 | Login con Google y sesiones protegidas | `969830e` (PR #10) |
+| 13 | URI de redirección del callback | `2bc239f` (PR #11) |
+| 14 | `FRONTEND_URL` con `index.html` | `24d438f` (PR #13) |
 
-## 3. Backlog aprobado pendiente
+### Base de datos y secretos (tarea 11)
 
-### Tarea 0 — Base de datos relacional y secretos (completada en `feat/heraap-011`)
+- PostgreSQL 17.4 en el contenedor `postgresql`, base y rol `heraap` dedicados.
+- Tablas: `usuarios`, `identidades`, `sesiones`, `auditoria`, `auth_estados` y
+  `schema_migrations`; migraciones en `backend/db/migrations/`, transaccionales.
+- Secreto `heraap/config` en LocalEmu Secrets Manager (19 claves): toda la
+  configuración de `.env`, incluidas `DB_*`, `GOOGLE_*` y `FRONTEND_URL`.
+- Las Lambdas solo reciben `SECRET_ID` y `SECRETS_ENDPOINT_URL`; leen el secreto
+  con caché de 5 minutos e IAM acotado al ARN.
+- Scripts `npm run db:init` y `npm run secrets:publish`, idempotentes.
 
-Objetivo: almacenar usuarios, identidades y sesiones en PostgreSQL, con las
-credenciales y la configuración sensible en Secrets Manager, preparado para un
-RDS PostgreSQL cuando exista infraestructura real.
+### Login con Google (tareas 12-14)
 
-Decisión tomada (2026-11-25): se usa el contenedor `postgresql` existente
-(PostgreSQL 17.4, datos en `/DATA/AppData/postgresql/data`), que ya aloja una
-base por aplicación (`coaching`, `fecu`, `finanzas`, `fecubv`). Se creará la base
-`heraap` y el rol `heraap`, aislados de las demás. Las Lambdas lo alcanzan desde
-la red `heraap-local` por `172.18.0.1:5432` o por la IP LAN
-`192.168.100.9:5432`; el nombre `postgresql` no resuelve desde esa red.
+- OAuth 2.0 con PKCE: `GET /auth/google/start` y `GET /auth/google/callback`;
+  `id_token` verificado contra el JWKS de Google con `jose` 6.2.18 (emisor,
+  audiencia y nonce).
+- `state` de un solo uso con hash en `auth_estados` (10 minutos).
+- Sesión: token de 32 bytes, solo SHA-256 en `sesiones`, 7 días; cookie
+  `HttpOnly; Secure; SameSite=Lax; Path=/`.
+- `GET /sesion` y `POST /logout`; las rutas de registros guardan `usuarioId`.
+- Cliente OAuth creado y claves publicadas en el secreto; falta confirmar el
+  login completo con una cuenta real de Google.
+- Validaciones añadidas por los errores encontrados:
+  - `GOOGLE_REDIRECT_URI` debe terminar en `/auth/google/callback` (es la URI
+    autorizada en Google Cloud, no la del frontend).
+  - `FRONTEND_URL` debe incluir `index.html`, porque LocalEmu devuelve el
+    listado del bucket (XML) en la ruta raíz del sitio.
 
-Alcance mínimo:
+### Pruebas al cierre de la tarea 12
 
-- Base `heraap` y rol `heraap` con permisos solo sobre su base y su esquema;
-  contraseña generada para el laboratorio y guardada únicamente en el secreto.
-- Esquema versionado (`schema.sql` + migraciones idempotentes) con tablas de
-  usuarios, identidades externas (Google), sesiones y auditoría básica.
-- Secreto `heraap/config` en LocalEmu Secrets Manager con JSON de configuración
-  (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y, en su momento,
-  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`). Lo crea o actualiza el script de
-  despliegue desde `.env`, con `ClientRequestToken` UUID porque LocalEmu lo exige
-  en `CreateSecret`/`PutSecretValue`.
-- Lectura del secreto desde las Lambdas con `@aws-sdk/client-secrets-manager`,
-  caché en memoria por ejecución y política IAM limitada al ARN del secreto.
-- Script de arranque/verificación de la base integrado en los scripts locales.
-- Pruebas unitarias del acceso a datos (conexión simulada) y de la carga del
-  secreto, incluyendo el caso de secreto ausente o JSON inválido.
+49 pruebas de backend, 13 del cliente, 22 E2E controlados y 2 E2E reales
+(escritorio y móvil), todos en verde; `npm run check` sin errores.
 
-Descartado: `AWS::RDS::DBInstance` no se despliega en LocalEmu 1.4.0 porque RDS no
-está implementado (`DescribeDBEngineVersions` responde `InternalFailure`); queda
-solo como objetivo de producción.
+## 3. Pendiente
 
-### Tarea 1 — Login con Google (completada en `feat/heraap-012`)
+### Tarea 15 — Endurecimiento y control de acceso (siguiente)
 
-Objetivo: autenticación de usuario con Google y alta de sesión propia.
+Objetivo: reducir superficie de ataque e inyección, y completar el control de
+acceso iniciado con el login.
 
-Alcance mínimo:
+- Propiedad de los registros: que `GET /registros/{id}` solo devuelva los del
+  usuario de la sesión (hoy se leen todos) y decidir qué hacer con los
+  registros anteriores sin `usuarioId`.
+- Rate limiting por IP e identidad, bloqueo temporal tras intentos fallidos y
+  límite de sesiones activas por usuario.
+- CSRF para operaciones con cookie, CORS restringido al origen del frontend y
+  cabeceras de seguridad.
+- Validación estricta de entrada en todos los endpoints y consultas siempre
+  parametrizadas (revisar las existentes).
+- Rotación de sesión al iniciar sesión y purga de sesiones/estados expirados.
+- Logs y auditoría sin datos sensibles; revisar que nunca se registren tokens.
+- Pruebas unitarias de cada control y E2E del flujo con sesión.
 
-- Flujo OAuth 2.0/OIDC con Google: botón de acceso, callback, verificación del
-  `id_token` contra el JWKS de Google (emisor, audiencia, expiración, nonce).
-- Alta o vinculación del usuario en PostgreSQL a partir del `sub` de Google.
-- Sesión propia (cookie `HttpOnly`, `Secure`, `SameSite`) emitida por el backend,
-  con expiración y cierre de sesión.
-- Endpoint de identidad (`GET /sesion`) y protección de las rutas existentes.
-- Frontend: estados de carga/error, usuario identificado y cierre de sesión.
-- Pruebas unitarias del callback, validación del token y creación de sesión.
+### Otros pendientes
 
-Decisiones requeridas: client ID/secret de Google (guardados en el secreto
-`heraap/config` de Secrets Manager, nunca en el repo), URI de redirección con el
-túnel HTTPS, alcance (`openid email profile`) y política de sesión (duración,
-renovación, revocación).
+- Confirmar el login real con Google en una ventana privada y documentar el
+  resultado.
+- Antes de cualquier entorno real: quitar `DEV_LOGIN_ENABLED` y el endpoint
+  `/auth/dev`, y sustituir el contenedor PostgreSQL por RDS (hoy LocalEmu no
+  implementa RDS).
+- Valorar reiniciar la pantalla de consentimiento de Google cuando deje de
+  estar en modo *Testing*.
+- Opcional: validación independiente en WSL2 con systemd (no probada).
 
-### Tarea 2 — Acceso seguro y endurecimiento
+## 4. Reglas de trabajo
 
-Objetivo: reducir superficie de ataque e inyección en todo el módulo.
+- Cada tarea requiere aprobación explícita del usuario antes de empezar y
+  aprobación aparte del mensaje antes de cada commit.
+- Commits semánticos en español en `feat/heraap-NNN` creada desde `main`.
+- PR solo de feature a `main`, con squash; el merge lo hace el usuario y el
+  despliegue ocurre al fusionar, no al abrir el PR.
+- `main` protegida: PR obligatorio, check «Verificar estructura y build»,
+  0 aprobaciones de terceros, historia lineal, sin force-push.
+- Cada módulo nuevo incluye pruebas unitarias propias.
+- No tocar AWS real, ni ejecutar `npm audit fix --force`, ni cambiar Serverless
+  como efecto colateral.
 
-Alcance mínimo:
-
-- Consultas parametrizadas y validación estricta de entrada en cada endpoint.
-- Hash de contraseñas con Argon2id si se admite login local; o solo Google si se
-  decide no almacenar contraseñas.
-- Límite de intentos y bloqueo temporal; rate limiting por IP e identidad.
-- CSRF para operaciones con cookie, CORS con credenciales restringido al origen
-  del frontend, cabeceras de seguridad y errores genéricos.
-- Logs sin datos sensibles ni tokens; auditoría de accesos y fallos.
-- Pruebas unitarias de validación, rate limiting y CSRF.
-
-## 4. Entorno operativo (resumen para reconstruir el prompt)
+## 5. Entorno operativo
 
 - Servidor Debian, IP LAN `192.168.100.9`; contenedor `heraap-localemu`, red
-  `heraap-local`, volumen persistente `heraap-localemu-data` (no usar down -v).
-- API REST actual `xsmydwgk1h`; el deploy obtiene los outputs, no fijar el ID.
-- Frontend público: `https://local.deptofeliz.uk/heraap-frontend-local/index.html`.
-  Frontend LAN: `http://192.168.100.9:4566/heraap-frontend-local/index.html`.
-  Dashboard: `http://192.168.100.9:4566/_localemu/dashboard`.
-- El túnel Cloudflare publica el puerto 4566 completo; el navegador usa HTTPS y
-  el frontend llama a la API por ruta relativa del mismo origen. Cualquier cookie
-  de sesión y cualquier callback OAuth deben respetar ese origen.
-- Runner `heraap-local-main` (usuario `heraap-runner`) con hook que rechaza PR,
-  forks, features y otros workflows; solo publica `main`.
+  `heraap-local`, volumen `heraap-localemu-data` (no usar `down -v`).
+- API REST actual `xsmydwgk1h`; el deploy obtiene los outputs. Si el `ApiId`
+  cambia, hay que actualizar la URI autorizada en Google Cloud y
+  `GOOGLE_REDIRECT_URI`.
+- Frontend: `https://local.deptofeliz.uk/heraap-frontend-local/index.html`
+  (siempre con `index.html`). LAN: `http://192.168.100.9:4566/heraap-frontend-local/index.html`.
+- El túnel Cloudflare publica el puerto 4566; las cookies solo funcionan por
+  HTTPS, no por la IP LAN en claro.
+- PostgreSQL 17.4 en el contenedor `postgresql` (red `n8n_net`), alcanzable
+  desde `heraap-local` por `172.18.0.1:5432` o `192.168.100.9:5432`.
+- Runner `heraap-local-main` (usuario `heraap-runner`) con hook que solo
+  permite publicar `main`.
 - Node global del servidor no coincide con el pin: usar el binario fijado.
-- PostgreSQL 17.4 en el contenedor `postgresql` (red `n8n_net`, publica 5432 en
-  todas las interfaces). Base `heraap` y rol `heraap` propios. Alcanzable desde
-  `heraap-local` por `172.18.0.1:5432` o `192.168.100.9:5432`.
-- Secrets Manager de LocalEmu operativo: `CreateSecret`, `GetSecretValue`,
-  `PutSecretValue` y `DeleteSecret` verificados; `ListSecrets` responde vacío
-  cuando no hay secretos. Exige `ClientRequestToken` UUID en create y put.
 
-## 5. Herramientas y comandos
+## 6. Herramientas y comandos
 
-Herramientas en `.state/tools/` (ignorado por git; `/tmp` se vacía entre sesiones):
+Herramientas en `.state/tools/` (ignorado por git; `/tmp` se vacía):
 
 - Node.js 22.23.5 + npm 10.9.9: `.state/tools/node-v22.23.5-linux-x64/bin`.
-- GitHub CLI 2.105.0: `.state/tools/gh_2.105.0_linux_amd64/bin/gh`; el token
-  temporal está en `.state/tools/gh-token` (borrar cuando ya no se necesite).
-- Actionlint no está instalado; reinstalar 1.7.12 si se modifica `.github/`.
+- GitHub CLI 2.105.0: `.state/tools/gh_2.105.0_linux_amd64/bin/gh`; token
+  temporal en `.state/tools/gh-token`.
+- Chromium de Playwright: `.state/pw-browsers` (`PLAYWRIGHT_BROWSERS_PATH`).
+- Actionlint no está instalado; reinstalar 1.7.12 si se toca `.github/`.
 
 ```bash
 npm ci && npm run setup && npm run check
 npm run test:backend && npm run test:frontend && npm run test:runner
-npm run infra:status
-npm run test:backend:local
-node backend/tests/integration-local.cjs verify-saved
+npm run db:init
+npm run secrets:publish
 npm run deploy:local
+npm run test:backend:local
+HERAAP_E2E_FRONTEND_URL=https://local.deptofeliz.uk/heraap-frontend-local/index.html \
+  npm run test:frontend:e2e:local
 ```
 
-Playwright requiere Chromium y no está instalado; reinstalarlo bajo
-`.state/tools` y definir `PLAYWRIGHT_BROWSERS_PATH` para los E2E.
+## 7. Límites y riesgos conocidos
 
-## 6. Límites y riesgos conocidos
-
-- Sin rollback automático ni limpieza de assets históricos. No mezclar un deploy
-  manual desde otro checkout con uno del runner.
+- El contenedor `postgresql` publica 5432 en todas las interfaces; conviene
+  restringirlo antes de usar credenciales reales.
+- El secreto vive fuera de CloudFormation: si se recrea el volumen, hay que
+  volver a publicarlo.
 - Serverless v3 arrastra dependencias antiguas con vulnerabilidades conocidas,
-  aceptadas para laboratorio.
+  aceptadas para el laboratorio.
+- Las pruebas reales crean registros que se conservan; no hay borrado ni
+  listado todavía.
 - `.state/`, `.env*` y los respaldos están ignorados: nunca publicar credenciales.
-- El healthcheck de LocalEmu no garantiza Lambdas activas; usar las esperas del
-  script de despliegue.
-- Las pruebas reales crean registros que se conservan (sin borrado en fase 1).
-
-## 7. Estado de la tarea 0 y próximo paso
-
-La tarea 0 se ejecutó en `feat/heraap-011`: base `heraap`, rol `heraap`, esquema
-versionado, secreto `heraap/config` (15 claves) y lectura por SDK con IAM acotado.
-Verificado: 21 pruebas unitarias, migraciones idempotentes, `secrets:publish`
-idempotente y API real 201/200/400/404 tras el despliegue. Falta el PR a `main`.
-
-La tarea 1 se ejecutó en `feat/heraap-012` con 49 pruebas de backend, 13 del
-cliente, 22 E2E controlados y 2 E2E reales en escritorio y móvil. Falta el PR.
-
-Próximo paso: solicitar aprobación de la tarea 2 (endurecimiento y control de
-acceso) y crear `feat/heraap-013` desde `main` actualizado.
