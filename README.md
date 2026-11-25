@@ -4,8 +4,8 @@ Laboratorio serverless para desarrollar con React, Lambda, API Gateway REST,
 DynamoDB y S3 sobre LocalEmu. Incluye backend de creación y consulta de registros,
 infraestructura Docker con persistencia y un frontend funcional de creación y consulta.
 `npm run deploy:local` despliega backend y frontend en S3 local.
-El workflow de despliegue tras fusionar en `main` está preparado; su activación
-requiere integrar los archivos del workflow en esa rama.
+El workflow de despliegue tras fusionar en `main` está activo y verificado
+con el runner dedicado del servidor.
 
 ## Versiones fijadas
 
@@ -224,9 +224,10 @@ valida el commit en GitHub y después despliega en el servidor. Un PR solo valid
 su fusión en main dispara la publicación. No ejecutar PR de forks en el servidor.
 Instalación, hooks, operación y verificación: [infra/runner.md](infra/runner.md).
 
-La integración inicial del workflow en `main` sigue pendiente de PR y revisión.
-Hasta entonces, el runner puede estar online, pero no hay despliegue automático
-activo. Ver [status.md](status.md) antes de continuar el trabajo.
+La integración inicial se realizó mediante el PR #5. El primer despliegue
+automático pasó en el [run 45542049890](https://github.com/ljuskas/proyHerapp_v2/actions/runs/45542049890).
+El SHA publicado coincide con main y los registros previos se conservaron.
+Ver [status.md](status.md) antes de continuar el trabajo.
 
 Cada publicación incluye `deployment.json` con SHA, fecha UTC, origen manual o
 GitHub Actions y, para este último, enlace al run. Se puede consultar en:

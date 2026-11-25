@@ -7,7 +7,8 @@ https://github.com/ljuskas/proyHerapp_v2.
 
 - Prompt original: `/mnt/storage2/DATA/proyectos-gpt/prompt_proyHeraap_v2.md`.
 - Checkout de desarrollo: `/mnt/storage2/DATA/proyectos-gpt/proyHerapp_v2`.
-- Rama de esta tarea: `feat/heraap-007`. Consultar `git status` y `git log -5`
+- Implementación integrada desde `feat/heraap-007` mediante PR #5. Cierre
+  documental en `feat/heraap-008`. Consultar `git status` y `git log -5`
   antes de actuar; este documento no fija su propio SHA.
 - Cada tarea nueva requiere aprobación del usuario. La tarea 7 y este archivo
   están aprobados. No iniciar otras tareas por inferencia.
@@ -42,7 +43,7 @@ https://github.com/ljuskas/proyHerapp_v2.
 | 5. Frontend | React/Vite/TS; crear/consultar/copiar ID, recuperación tras recarga, loading/error/success, responsive y accesibilidad; tests y capturas |
 | Corrección Cloudflare | Frontend publicado con ruta API del mismo origen; crear/consultar por HTTPS verificado en escritorio y móvil |
 | 6. Deploy completo | `npm run deploy:local`, npm ci, deploy backend, outputs, build, publicación, caché y locks; dos despliegues y conservación de registros comprobados |
-| 7. CI/CD local | Workflow y runner dedicado instalados; ver sección de validación y pendiente de integración más abajo |
+| 7. CI/CD local | Completada: PR #5 fusionado, push main ejecutó validaciones y publicación en runner; SHA público y conservación comprobados |
 | Entrega a otro agente | Este status.md, README y guía infra/runner.md |
 
 ## Cobertura del prompt original
@@ -70,26 +71,33 @@ https://github.com/ljuskas/proyHerapp_v2.
 - [x] Workflow `.github/workflows/deploy-local.yml` implementado con push main,
   validaciones previas y publicación en runner dedicado.
 - [x] Runner Linux instalado como servicio con cuenta propia y grupo Docker.
-- [ ] Integrar el código/workflow en main mediante PR aprobado.
-- [ ] Verificar un run real de GitHub Actions por push main y comparar su SHA
-  con `deployment.json`. No declarar este criterio cumplido por una prueba manual.
-- [ ] Verificar otra integración automática y conservación del registro anterior.
-- [ ] Compatibilidad WSL2 con systemd: diseño compatible, ejecución comprobada
-  en Debian del servidor; no se ha realizado una instalación WSL2 independiente.
+- [x] Integrar el código/workflow en main mediante PR, con autorización del usuario.
+- [x] Run real de GitHub Actions por push main exitoso y SHA comparado con
+  deployment.json; source github-actions, workingTreeDirty false.
+- [x] Registro anterior conservado tras el despliegue automático.
+- [ ] Validación adicional opcional: instalación WSL2 con systemd. El diseño es
+  compatible y está probado en Debian; no se ha probado WSL2 por separado.
 
 ## Estado de GitHub e integración inicial
 
-Al comenzar esta tarea, main seguía en el commit vacío
-`1351967a99864b922c7f3634030b3e21db77a5d3`. Solo estaba abierto el PR #1 de
-`feat/heraap-001` a main. No se han integrado automáticamente las ramas ni se
-han eludido protecciones.
+El usuario autorizó dejar listo y fusionar el PR #5. Se fusionó por squash,
+sin bypass, con CI verde, el 2026-11-25T03:44:29Z. Commit inicial integrado:
+`e5f857114d8b9bf9dd35a3b7709cd503309f39b5`.
 
-Las ramas 002 a 007 acumulan trabajo previo. Para integrar la versión completa,
-preparar un PR desde la última feature hacia main y revisar el diff completo.
-Coordinar el cierre del PR #1 si queda reemplazado. No integrar únicamente el
-PR #1 esperando que contenga las tareas posteriores. El usuario confirmó que trabaja solo y autorizó quitar las aprobaciones
-externas obligatorias. GitHub exige PR y CI, con 0 aprobaciones de terceros.
-Una vez aprobada y fusionada la versión completa, comprobar el workflow.
+El push a main inició automáticamente el
+[run 45542049890](https://github.com/ljuskas/proyHerapp_v2/actions/runs/45542049890),
+que terminó exitosamente: validaciones en GitHub y publicación en heraap-local-main.
+El manifiesto HTTPS confirmó ese mismo SHA, origen github-actions y árbol limpio.
+El registro de prueba previo siguió disponible.
+
+El usuario confirmó que trabaja solo y autorizó quitar aprobaciones externas.
+GitHub exige PR y CI, con 0 aprobaciones de terceros; se conservan las otras
+protecciones, incluidas las aplicadas a administradores.
+
+Las ramas antiguas contienen la historia anterior al squash. Para nuevas tareas,
+crear la siguiente feature desde origin/main actualizado, no desde una feature
+anterior al squash. El PR #1 permanece como remanente del scaffold inicial: no
+fusionarlo, pues no contiene el estado final; su cierre es limpieza pendiente.
 
 Commits previos relevantes:
 
@@ -97,11 +105,20 @@ Commits previos relevantes:
 - `5bf9420`: acceso por túnel HTTPS (feat/heraap-005).
 - `26f3ac1`: despliegue completo (feat/heraap-006).
 
-Se abrió el [PR #5](https://github.com/ljuskas/proyHerapp_v2/pull/5), en borrador,
-de feat/heraap-007 directamente a main, con la integración completa. La CI del
-PR corre en GitHub. Falta marcarlo listo e integrarlo según autorización
-del usuario, con CI verde; ya no requiere un segundo colaborador. No se fusionó.
-No crear nuevos PR entre features. El PR #1 permanece abierto, sin modificar.
+El [PR #5](https://github.com/ljuskas/proyHerapp_v2/pull/5) está fusionado.
+Este cierre documental se prepara en feat/heraap-008 y debe pasar por PR a main.
+No crear PR entre features ni hacer push directo a main.
+
+## Pendientes para el siguiente agente
+
+No quedan entregables funcionales del prompt inicial pendientes en Debian.
+Las nuevas funcionalidades requieren una tarea aprobada por el usuario.
+
+- Comprobar Actions y deployment.json para conocer el último SHA publicado.
+- Coordinar el cierre del PR #1 obsoleto; no fusionarlo.
+- Opcional: validación independiente WSL2 con systemd.
+- Mantener el runner y sus actualizaciones; no cambiar Serverless ni ejecutar
+  audit fix --force sin tratarlo como una tarea nueva.
 
 ## Entorno operativo
 
@@ -203,6 +220,11 @@ Consultar infra/runner.md para servicio, registro y diagnóstico.
 - El manifiesto corresponde al clon probado en 9380ff3. Consultar git log para
   cambios posteriores de documentación y operación del runner; que cambie el
   HEAD de una feature no implica un despliegue automático.
-- El run automático real queda pendiente hasta integrar en main. Consultar la
-  CI del PR #5 y Actions antes de continuar; no asumir que estar online equivale
-  a haber desplegado automáticamente.
+- Primer run automático real 45542049890: success. Validación hosted 1m23s y
+  publicación en runner heraap-local-main 1m41s; hook previo al job aprobado.
+- Manifiesto público comprobado mediante curl: commit e5f857114d8b9bf9dd35a3b7709cd503309f39b5,
+  source github-actions, workingTreeDirty false, fecha 2026-11-25T03:47:31Z,
+  runUrl correcto. Un acceso con urllib devolvió 403; curl accedió correctamente.
+- verify-saved posterior al run confirmó el registro previo 58de73bf.
+- Estos son resultados de la primera integración. Para versiones posteriores,
+  consultar Actions y el manifiesto público; un cambio de feature no despliega.
