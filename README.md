@@ -45,7 +45,9 @@ https://local.deptofeliz.uk/_aws/execute-api/<API_ID>/local/auth/google/callback
 
 Después, en `.env`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 `GOOGLE_REDIRECT_URI` (esa misma URI), `FRONTEND_URL`
-(`https://local.deptofeliz.uk/heraap-frontend-local/`) y `npm run secrets:publish`.
+(`https://local.deptofeliz.uk/heraap-frontend-local/index.html`, con `index.html:
+LocalEmu responde el listado del bucket si se usa la ruta raíz) y
+`npm run secrets:publish`.
 Sin esas claves el botón de acceso devuelve 503 y el resto de la app sigue
 funcionando. Si el `ApiId` cambiara, hay que actualizar la URI autorizada en
 Google Cloud y `GOOGLE_REDIRECT_URI`.
