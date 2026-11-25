@@ -2,9 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.skip(process.env.HERAAP_E2E_REAL_API === '1', 'La ejecución real tiene sus propios casos sin mocks.');
 const registro = { id: 'e861a782-59c3-49c9-a1c8-e71c4ff12345', nombre: 'Mi primer registro', createdAt: '2026-11-24T20:00:00.000Z' };
+const usuario = { id: 'usuario-1', email: 'persona@example.com', nombre: 'Persona de Prueba' };
 
 test.beforeEach(async ({ page }) => {
   let saved = { ...registro };
+  await page.route(/\/sesion$/, (route) => route.fulfill({ json: { usuario } }));
+  await page.route(/\/logout$/, (route) => route.fulfill({ status: 204, body: '' }));
   await page.route(/\/registros(?:\/[^?]*)?$/, async (route) => {
     const request = route.request();
     if (request.method() === 'POST') {
@@ -128,4 +131,28 @@ test('cambiar el ID cancela la consulta anterior y evita resultados desactualiza
   release?.();
   await expect(query.locator('code')).toHaveText(next.id);
   await expect(query.getByText(registro.nombre, { exact: true })).toHaveCount(0);
+});
+
+test('sin sesión muestra el acceso y no carga los paneles', async ({ page }) => {
+  await page.route(/\/sesion$/, (route) => route.fulfill({ status: 401, json: { message: 'Inicia sesión para continuar.' } }));
+  let registros = 0;
+  page.on('request', (request) => { if (request.url().includes('/registros')) registros++; });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Entra para ver tus registros.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continuar con Google' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Nuevo registro' })).toHaveCount(0);
+  expect(registros).toBe(0);
+});
+
+test('informa un acceso cancelado al volver de Google', async ({ page }) => {
+  await page.route(/\/sesion$/, (route) => route.fulfill({ status: 401, json: {} }));
+  await page.goto('/?acceso=error&motivo=cancelado');
+  await expect(page.getByRole('alert')).toContainText('Cancelaste el acceso con Google');
+});
+
+test('muestra el usuario y cierra la sesión', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(usuario.nombre, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await expect(page.getByRole('heading', { name: 'Entra para ver tus registros.' })).toBeVisible();
 });

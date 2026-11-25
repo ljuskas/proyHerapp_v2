@@ -28,6 +28,9 @@ anterior sigue disponible en el historial de git.
 - PostgreSQL 17.4 operativo con base y rol `heraap`: tablas `usuarios`,
   `identidades`, `sesiones`, `auditoria` y `schema_migrations`. El secreto
   `heraap/config` en LocalEmu agrupa toda la configuración de `.env`.
+- Acceso con Google implementado (PKCE, verificación de `id_token`, sesión en
+  PostgreSQL con cookie `HttpOnly; Secure`). Sin credenciales de Google aún:
+  hace falta crear el cliente OAuth y publicar `GOOGLE_*` en el secreto.
 - Entorno local verificado con el pin del repo: `npm ci`, `npm run setup`,
   `npm run check`, tests de backend 9/9, de frontend 9/9 y del hook del runner
   3/3, con Node.js 22.23.5 y npm 10.9.9.
@@ -88,7 +91,7 @@ Descartado: `AWS::RDS::DBInstance` no se despliega en LocalEmu 1.4.0 porque RDS 
 está implementado (`DescribeDBEngineVersions` responde `InternalFailure`); queda
 solo como objetivo de producción.
 
-### Tarea 1 — Login con Google
+### Tarea 1 — Login con Google (completada en `feat/heraap-012`)
 
 Objetivo: autenticación de usuario con Google y alta de sesión propia.
 
@@ -183,6 +186,8 @@ versionado, secreto `heraap/config` (15 claves) y lectura por SDK con IAM acotad
 Verificado: 21 pruebas unitarias, migraciones idempotentes, `secrets:publish`
 idempotente y API real 201/200/400/404 tras el despliegue. Falta el PR a `main`.
 
-Próximo paso: solicitar aprobación de la tarea 1 (login con Google) y crear
-`feat/heraap-012` desde `main` actualizado. La tarea 2 queda descrita, pero no se
-inicia sin aprobación expresa.
+La tarea 1 se ejecutó en `feat/heraap-012` con 49 pruebas de backend, 13 del
+cliente, 22 E2E controlados y 2 E2E reales en escritorio y móvil. Falta el PR.
+
+Próximo paso: solicitar aprobación de la tarea 2 (endurecimiento y control de
+acceso) y crear `feat/heraap-013` desde `main` actualizado.

@@ -16,16 +16,35 @@ if (target.protocol !== 'http:' || target.hostname !== '127.0.0.1' || target.por
 const statePath = resolve(root, '.state/backend-smoke.json');
 const origin = 'http://localhost:5173';
 
+let cookie = '';
+
 async function request(path, options = {}) {
   return fetch(base + path, {
     ...options,
-    headers: { Origin: origin, ...options.headers },
+    headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}), ...options.headers },
     signal: AbortSignal.timeout(60000),
   });
 }
 
+async function iniciarSesion() {
+  const result = await fetch(base + '/auth/dev', {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'integracion@example.com', nombre: 'Integración' }),
+    signal: AbortSignal.timeout(60000),
+  });
+  if (result.status !== 200) throw new Error('El acceso de desarrollo no está disponible: ' + await result.text());
+  const header = typeof result.headers.getSetCookie === 'function'
+    ? result.headers.getSetCookie()[0] : result.headers.get('set-cookie');
+  if (!header) throw new Error('El acceso no devolvió cookie de sesión.');
+  cookie = header.split(';')[0];
+  const sesion = await request('/sesion');
+  if (sesion.status !== 200) throw new Error('La sesión creada no es válida.');
+}
+
 async function main() {
   if (process.argv[2] === 'verify-saved') {
+    await iniciarSesion();
     const saved = JSON.parse(readFileSync(statePath, 'utf8'));
     const result = await request('/registros/' + saved.id);
     assert.equal(result.status, 200);
@@ -33,6 +52,13 @@ async function main() {
     console.log('OK: registro de prueba conservado:', saved.id);
     return;
   }
+  const sinSesion = await request('/registros', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"nombre":"Sin sesión"}',
+  });
+  assert.equal(sinSesion.status, 401);
+
+  await iniciarSesion();
+
   const created = await request('/registros', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nombre: 'Prueba de integración Heraap' }),
@@ -65,6 +91,12 @@ async function main() {
     assert.ok(preflight.headers.get('Access-Control-Allow-Headers').toLowerCase().includes('content-type'));
     assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), '*');
   }
+  const cierre = await request('/logout', { method: 'POST' });
+  assert.equal(cierre.status, 204);
+  const trasCerrar = await request('/registros/' + item.id);
+  assert.equal(trasCerrar.status, 401);
+  await iniciarSesion();
+
   mkdirSync(resolve(root, '.state'), { recursive: true });
   writeFileSync(statePath, JSON.stringify(item, null, 2));
   console.log('OK: API devuelve 201, 200, 400, 404 y preflight CORS válido.');

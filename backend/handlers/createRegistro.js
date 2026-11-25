@@ -2,11 +2,31 @@
 
 const { randomUUID } = require('node:crypto');
 const { putRegistro } = require('../lib/dynamodb');
+const { unauthorized } = require('../lib/auth');
+const { context: loadContext } = require('../lib/context');
 const { response, requestId, log } = require('../lib/response');
 
-function createHandler({ put = putRegistro, uuid = randomUUID, now = () => new Date(), logger = console } = {}) {
+function createHandler({
+  put = putRegistro,
+  uuid = randomUUID,
+  now = () => new Date(),
+  logger = console,
+  authorize,
+} = {}) {
+  const autorizar = authorize || (async (event) => (await loadContext()).auth.current(event));
   return async (event, context) => {
     const trace = requestId(event, context);
+    let sesion;
+    try {
+      sesion = await autorizar(event);
+    } catch (error) {
+      log(logger, 'error', { requestId: trace, action: 'createRegistro', statusCode: 500, error: error.name });
+      return response(500, { message: 'Error interno del servidor.' });
+    }
+    if (!sesion) {
+      log(logger, 'info', { requestId: trace, action: 'createRegistro', statusCode: 401 });
+      return unauthorized();
+    }
     let body;
     try {
       const raw = event?.isBase64Encoded
@@ -21,7 +41,9 @@ function createHandler({ put = putRegistro, uuid = randomUUID, now = () => new D
       return response(400, { message: 'El campo nombre debe ser un texto no vacío.' });
     }
     try {
-      const item = { id: uuid(), nombre: body.nombre.trim(), createdAt: now().toISOString() };
+      const item = {
+        id: uuid(), nombre: body.nombre.trim(), createdAt: now().toISOString(), usuarioId: sesion.id,
+      };
       await put(item);
       log(logger, 'info', { requestId: trace, action: 'createRegistro', statusCode: 201, id: item.id });
       return response(201, item);

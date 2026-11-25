@@ -15,6 +15,8 @@ provider:
   environment:
     SECRET_ID: heraap/config
     SECRETS_ENDPOINT_URL: http://localemu:4566
+    # Atajo de acceso solo para el laboratorio: nunca en un stage real.
+    DEV_LOGIN_ENABLED: '1'
 
 plugins:
   - ./plugins/local-only.cjs
@@ -58,6 +60,44 @@ functions:
       - http:
           path: registros/{id}
           method: get
+          cors: ${self:custom.cors}
+  authStart:
+    handler: handlers/authGoogleStart.handler
+    role: !GetAtt AuthRole.Arn
+    events:
+      - http:
+          path: auth/google/start
+          method: get
+  authCallback:
+    handler: handlers/authGoogleCallback.handler
+    role: !GetAtt AuthRole.Arn
+    events:
+      - http:
+          path: auth/google/callback
+          method: get
+  authDev:
+    handler: handlers/authDev.handler
+    role: !GetAtt AuthRole.Arn
+    events:
+      - http:
+          path: auth/dev
+          method: post
+          cors: ${self:custom.cors}
+  sesion:
+    handler: handlers/sesion.handler
+    role: !GetAtt AuthRole.Arn
+    events:
+      - http:
+          path: sesion
+          method: get
+          cors: ${self:custom.cors}
+  logout:
+    handler: handlers/logout.handler
+    role: !GetAtt AuthRole.Arn
+    events:
+      - http:
+          path: logout
+          method: post
           cors: ${self:custom.cors}
 
 resources:
@@ -149,6 +189,28 @@ resources:
                 - Effect: Allow
                   Action: [logs:CreateLogStream, logs:PutLogEvents]
                   Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}-getRegistro:*'
+
+    AuthRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: autenticacion-local
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:heraap/config-*'
+                - Effect: Allow
+                  Action: [logs:CreateLogStream, logs:PutLogEvents]
+                  Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}-*:*'
 
     GatewayDefault4xx:
       Type: AWS::ApiGateway::GatewayResponse

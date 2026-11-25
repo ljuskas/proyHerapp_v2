@@ -28,6 +28,24 @@ Serverless v3 está sin mantenimiento y se reserva para este laboratorio sin cue
 de Serverless. `backend/plugins/local-only.cjs` adapta el esquema para Node.js 22
 y bloquea destinos, credenciales, regiones y stages distintos de los del laboratorio.
 
+## Acceso con Google
+
+La API exige sesión: sin cookie, `POST /registros` y `GET /registros/{id}` responden
+401. El acceso usa OAuth 2.0 con PKCE y el `id_token` se verifica contra el JWKS
+de Google. La sesión se guarda en PostgreSQL (solo el hash del token) y viaja en
+una cookie `HttpOnly; Secure; SameSite=Lax`.
+
+Para habilitar el flujo real hay que crear un cliente OAuth 2.0 de tipo
+«aplicación web» en Google Cloud, autorizar la URI
+`https://local.deptofeliz.uk/heraap-frontend-local/` y añadir
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` y
+`FRONTEND_URL` a `.env`; después `npm run secrets:publish`. Sin esas claves el
+botón de acceso devuelve 503 y el resto de la app sigue funcionando.
+
+En el laboratorio existe un atajo `POST /auth/dev` con `{"email":"..."}` que crea
+una sesión sin Google. Solo está activo con `DEV_LOGIN_ENABLED=1`, que el stack
+fija para `stage: local`; no debe existir en un entorno real.
+
 ## Base de datos y secretos
 
 La configuración de la aplicación no vive en el despliegue: el contenido de `.env`
