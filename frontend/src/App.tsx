@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, createApi } from './api';
-import type { Registro } from './api';
+import type { Registro, Usuario } from './api';
 import { readLastId, rememberId } from './storage';
+import Login from './Login';
 import RecordDetails from './RecordDetails';
 
 type RequestState = { kind: 'idle' | 'loading' } | { kind: 'success'; registro: Registro } | { kind: 'error'; message: string };
+type AuthState = { kind: 'loading' } | { kind: 'anon' } | { kind: 'user'; usuario: Usuario };
 const api = createApi(import.meta.env.VITE_API_BASE_URL);
 const message = (error: unknown) => error instanceof ApiError ? error.message : 'No pudimos completar la solicitud. Inténtalo de nuevo.';
+function safeLoginUrl(): string | undefined {
+  try {
+    return api.loginUrl();
+  } catch {
+    return undefined;
+  }
+}
 
 export default function App() {
+  const [auth, setAuth] = useState<AuthState>({ kind: 'loading' });
+  const [accessError] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('acceso') === 'error' ? params.get('motivo') || 'desconocido' : null;
+  });
   const [nombre, setNombre] = useState('');
   const [nombreError, setNombreError] = useState('');
   const [createState, setCreateState] = useState<RequestState>({ kind: 'idle' });
@@ -27,6 +41,27 @@ export default function App() {
     createRequest.current?.abort();
     queryRequest.current?.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.session(controller.signal)
+      .then((usuario) => {
+        if (!controller.signal.aborted) setAuth(usuario ? { kind: 'user', usuario } : { kind: 'anon' });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAuth({ kind: 'anon' });
+      });
+    return () => controller.abort();
+  }, []);
+
+  async function logout() {
+    try {
+      await api.logout();
+    } catch {
+      // La sesión local se cierra igualmente.
+    }
+    setAuth({ kind: 'anon' });
+  }
 
   function saveId(id: string) {
     const saved = rememberId(id);
@@ -61,7 +96,11 @@ export default function App() {
       changeQueryId(registro.id);
       saveId(registro.id);
     } catch (error) {
-      if (!controller.signal.aborted) setCreateState({ kind: 'error', message: message(error) });
+      if (error instanceof ApiError && error.status === 401) {
+        setAuth({ kind: 'anon' });
+      } else if (!controller.signal.aborted) {
+        setCreateState({ kind: 'error', message: message(error) });
+      }
     } finally {
       if (createRequest.current === controller) createRequest.current = null;
     }
@@ -84,7 +123,9 @@ export default function App() {
       setQueryState({ kind: 'success', registro });
       saveId(registro.id);
     } catch (error) {
-      if (queryRequest.current === controller && !controller.signal.aborted) {
+      if (error instanceof ApiError && error.status === 401) {
+        setAuth({ kind: 'anon' });
+      } else if (queryRequest.current === controller && !controller.signal.aborted) {
         setQueryState({ kind: 'error', message: message(error) });
       }
     } finally {
@@ -96,9 +137,19 @@ export default function App() {
     <>
       <header className="site-header"><div className="header-inner">
         <a className="brand" href="./index.html" aria-label="Heraap, inicio"><span className="brand-mark" aria-hidden="true">h.</span><span>heraap</span></a>
-        <span className="environment"><span aria-hidden="true" />Laboratorio local</span>
+        {auth.kind === 'user' ? (
+          <div className="user-area">
+            <span className="user-name" title={auth.usuario.email}>{auth.usuario.nombre}</span>
+            <button className="text-button" type="button" onClick={logout}>Cerrar sesión</button>
+          </div>
+        ) : (
+          <span className="environment"><span aria-hidden="true" />Laboratorio local</span>
+        )}
       </div></header>
       <main>
+        {auth.kind === 'loading' && <p className="auth-status" role="status">Comprobando tu sesión…</p>}
+        {auth.kind === 'anon' && <Login loginUrl={safeLoginUrl()} motivo={accessError} />}
+        {auth.kind === 'user' && (<>
         <div className="intro"><p className="eyebrow">TU ESPACIO DE REGISTROS</p><h1>Crea. Guarda. Vuelve a encontrar.</h1><p>Un nombre es el comienzo. Su ID es la forma de volver.</p></div>
         <div className="workspace">
           <section className="panel" aria-labelledby="create-title" aria-busy={createState.kind === 'loading'}>
@@ -137,6 +188,7 @@ export default function App() {
         </div>
         {storageWarning && <p className="storage-warning" role="status">Tu navegador no pudo recordar este ID. Cópialo para conservarlo.</p>}
         <footer className="workspace-footer"><span className="footer-mark" aria-hidden="true">↳</span> Conserva el ID para volver. Tus registros permanecen guardados aunque cierres la página.</footer>
+        </>)}
       </main>
     </>
   );

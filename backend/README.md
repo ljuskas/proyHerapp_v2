@@ -61,6 +61,29 @@ normal actualiza la pila sin borrar los registros. La configuración IAM está
 declarada con permisos mínimos; el emulador mantiene su configuración global de
 IAM, sin activar enforcement en esta tarea.
 
+## Autenticación
+
+Flujo OAuth 2.0 con PKCE: `start` genera `state`, `nonce` y `code_verifier`, guarda
+solo el hash del estado en `auth_estados` (10 minutos, un solo uso) y redirige a
+Google. El callback consume el estado, canjea el código con el client secret
+(leído del secreto `heraap/config`) y verifica el `id_token` con `jose` contra el
+JWKS de Google (emisor, audiencia y nonce).
+
+La sesión es un token aleatorio de 32 bytes: se guarda su SHA-256 en `sesiones`
+junto a expiración de 7 días, IP y user agent. La cookie es
+`HttpOnly; Secure; SameSite=Lax; Path=/`. `logout` borra la fila y expira la cookie.
+Las rutas de registros exigen sesión y guardan `usuarioId` en los registros nuevos.
+
+Prueba manual en el laboratorio (el atajo solo existe en `stage: local`):
+
+```bash
+API=http://127.0.0.1:4566/_aws/execute-api/$(bash scripts/localemu.sh aws cloudformation describe-stacks \
+  --stack-name heraap-local --query "Stacks[0].Outputs[?OutputKey=='ApiId'].OutputValue | [0]" --output text)/local
+curl -i -c /tmp/heraap.txt -X POST "$API/auth/dev" \
+  -H 'Content-Type: application/json' -d '{"email":"prueba@example.com"}'
+curl -i -b /tmp/heraap.txt "$API/sesion"
+```
+
 ## Configuración y secretos
 
 Las Lambdas solo reciben `SECRET_ID` y `SECRETS_ENDPOINT_URL`; el resto de la
@@ -97,7 +120,18 @@ La tarea de login usará estas tablas; todavía no hay endpoints que las consult
 | Cuerpo JSON inválido | 400 |
 | `GET /registros/{id}` existente | 200 con el registro |
 | ID inexistente | 404 |
+| Sin sesión válida | 401 |
 | Error interno | 500 con mensaje genérico |
+
+Rutas de acceso:
+
+| Petición | Resultado |
+| --- | --- |
+| `GET /auth/google/start` | 302 a Google con `state`, `nonce` y PKCE |
+| `GET /auth/google/callback` | 302 al frontend; crea o vincula usuario y fija cookie |
+| `POST /auth/dev` (`DEV_LOGIN_ENABLED=1`) | 200 con cookie de sesión, solo laboratorio |
+| `GET /sesion` | 200 con `{usuario}` o 401 |
+| `POST /logout` | 204 y cookie expirada |
 
 El nombre se guarda sin espacios en los extremos. El ID es UUID v4 y `createdAt`
 es ISO 8601 UTC. Las lecturas usan `ConsistentRead: true`. Los handlers producen
@@ -168,7 +202,7 @@ restaurados antes de usar el servicio. Aplicar cambios de infraestructura con
 `npm run infra:up` antes de desplegar si el contenedor fue creado con una
 configuración anterior.
 
-Verificación de esta fase: 21 pruebas unitarias satisfactorias; API real con
+Verificación de esta fase: 49 pruebas unitarias de backend y 13 del cliente; API real con
 201/200/400/404 y CORS; redeploy efectivo conservando un registro; restauración
 de las dos Lambdas y los registros tras recrear/reiniciar LocalEmu; consulta por
 LAN y lectura HTTP anónima de un objeto temporal del bucket frontend. Los casos

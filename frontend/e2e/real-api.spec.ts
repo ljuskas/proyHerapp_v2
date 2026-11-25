@@ -12,6 +12,20 @@ test('flujo real: crear, recargar y consultar el registro conservado', async ({ 
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(process.env.HERAAP_E2E_FRONTEND_URL || '/');
+  // El flujo real de Google no se automatiza: se abre sesión con el atajo local.
+  const acceso = page.getByRole('heading', { name: 'Entra para ver tus registros.' });
+  const paneles = page.getByRole('region', { name: 'Nuevo registro' });
+  await expect(acceso.or(paneles)).toBeVisible({ timeout: 20000 });
+  if (await acceso.isVisible()) {
+    const href = await page.getByRole('link', { name: 'Continuar con Google' }).getAttribute('href');
+    expect(href).toBeTruthy();
+    const respuesta = await page.request.post(href!.replace('/auth/google/start', '/auth/dev'), {
+      data: { email: 'e2e@example.com', nombre: 'Prueba E2E' },
+    });
+    expect(respuesta.ok()).toBeTruthy();
+    await page.reload();
+  }
+  await expect(page.getByRole('region', { name: 'Nuevo registro' })).toBeVisible({ timeout: 20000 });
   const nombre = `Prueba de interfaz ${testInfo.project.name}`;
   await page.getByLabel('Nombre', { exact: true }).fill(nombre);
   await page.getByRole('button', { name: 'Crear registro', exact: true }).click();

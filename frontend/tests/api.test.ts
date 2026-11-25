@@ -64,3 +64,47 @@ test('cancelar una consulta conserva la señal de aborto para descartar la respu
   });
   await assert.rejects(api.getRegistro('id', controller.signal), (error: unknown) => error instanceof DOMException && error.name === 'AbortError');
 });
+
+test('la sesión devuelve el usuario o null cuando no hay cookie', async () => {
+  const usuario = { id: 'u-1', email: 'a@b.cl', nombre: 'Ana' };
+  const autenticado = createApi(base, async () => Response.json({ usuario }));
+  assert.deepEqual(await autenticado.session(), usuario);
+  const anonimo = createApi(base, async () => Response.json({ message: 'Inicia sesión' }, { status: 401 }));
+  assert.equal(await anonimo.session(), null);
+  const fallo = createApi(base, async () => Response.json({}, { status: 500 }));
+  await assert.rejects(fallo.session(), /No pudimos comprobar tu sesión/);
+});
+
+test('la sesión usa cookies solo con ruta relativa y valida la forma del usuario', async () => {
+  const calls: RequestInit[] = [];
+  const sameOrigin = createApi('/_aws/execute-api/mock/local', async (_url, options) => {
+    calls.push(options || {});
+    return Response.json({ usuario: { id: 'u-1' } });
+  });
+  await assert.rejects(sameOrigin.session(), /respuesta inesperada/);
+  assert.equal(calls[0].credentials, 'include');
+  const crossOrigin = createApi(base, async (_url, options) => {
+    calls.push(options || {});
+    return Response.json({ usuario: { id: 'u-1', email: 'a@b.cl', nombre: 'A' } });
+  });
+  await crossOrigin.session();
+  assert.equal(calls[1].credentials, 'omit');
+});
+
+test('el cierre de sesión usa POST y tolera 401', async () => {
+  const calls: { url: string; options: RequestInit }[] = [];
+  const api = createApi(base, async (url, options) => {
+    calls.push({ url: String(url), options: options || {} });
+    return new Response(null, { status: 204 });
+  });
+  await api.logout();
+  assert.equal(calls[0].url, base + '/logout');
+  assert.equal(calls[0].options.method, 'POST');
+  const sinSesion = createApi(base, async () => Response.json({}, { status: 401 }));
+  await sinSesion.logout();
+});
+
+test('un 401 al crear se distingue para volver al acceso', async () => {
+  const api = createApi(base, async () => Response.json({ message: 'Inicia sesión' }, { status: 401 }));
+  await assert.rejects(api.createRegistro('Nombre'), (error: unknown) => error instanceof ApiError && error.status === 401 && error.message.includes('Inicia sesión'));
+});

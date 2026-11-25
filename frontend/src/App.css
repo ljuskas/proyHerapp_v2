@@ -112,3 +112,14 @@ input:disabled { background: #f5f7f5; opacity: .8; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* Acceso con Google */
+.user-area { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }
+.user-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: #35544a; }
+.user-area .text-button { width: auto; white-space: nowrap; }
+.login { max-width: 520px; margin: 72px auto; padding: 0 24px; text-align: left; }
+.login h1 { margin: 0 0 14px; font-size: clamp(30px, 5vw, 42px); line-height: 1.1; letter-spacing: -1.2px; color: #1d3a32; }
+.login-copy { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
+.login-button { text-decoration: none; }
+.login-note { margin-top: 20px; color: #7a8b85; font-size: 12px; }
+.auth-status { margin: 72px auto; text-align: center; color: var(--muted); font-size: 14px; }
