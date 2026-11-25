@@ -2,6 +2,9 @@
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const config = require('./config');
+
+const LOCAL_ENDPOINTS = ['http://localemu:4566', 'http://127.0.0.1:4566'];
 
 function createStore(client, tableName) {
   return {
@@ -18,24 +21,37 @@ function createStore(client, tableName) {
 }
 
 let store;
-function localStore() {
-  if (!store) {
-    const endpoint = process.env.DYNAMODB_ENDPOINT_URL;
-    if (!['http://localemu:4566', 'http://127.0.0.1:4566'].includes(endpoint)) {
-      throw new Error('DYNAMODB_ENDPOINT_URL debe apuntar al laboratorio LocalEmu.');
-    }
-    const tableName = process.env.TABLE_NAME;
-    if (!tableName) throw new Error('Falta TABLE_NAME.');
-    const client = DynamoDBDocumentClient.from(new DynamoDBClient({
-      endpoint, region: process.env.AWS_REGION || 'us-east-1',
-    }));
-    store = createStore(client, tableName);
+let pendingStore;
+
+async function buildStore() {
+  const settings = await config.load();
+  const endpoint = settings.DYNAMODB_ENDPOINT_URL;
+  if (!LOCAL_ENDPOINTS.includes(endpoint)) {
+    throw new Error('DYNAMODB_ENDPOINT_URL debe apuntar al laboratorio LocalEmu.');
   }
-  return store;
+  const client = DynamoDBDocumentClient.from(new DynamoDBClient({
+    endpoint, region: process.env.AWS_REGION || 'us-east-1',
+  }));
+  return createStore(client, settings.TABLE_NAME);
+}
+
+async function localStore() {
+  if (store) return store;
+  if (!pendingStore) {
+    pendingStore = buildStore()
+      .then((created) => {
+        store = created;
+        return created;
+      })
+      .finally(() => {
+        pendingStore = null;
+      });
+  }
+  return pendingStore;
 }
 
 module.exports = {
   createStore,
-  putRegistro: (item) => localStore().put(item),
-  getRegistro: (id) => localStore().get(id),
+  putRegistro: async (item) => (await localStore()).put(item),
+  getRegistro: async (id) => (await localStore()).get(id),
 };

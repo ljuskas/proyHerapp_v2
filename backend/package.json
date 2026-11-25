@@ -7,12 +7,14 @@
     "npm": "10.9.9"
   },
   "scripts": {
-    "check": "node --check plugins/local-only.cjs && node --check handlers/createRegistro.js && node --check handlers/getRegistro.js",
+    "check": "node --check plugins/local-only.cjs && node --check handlers/createRegistro.js && node --check handlers/getRegistro.js && node --check lib/config.js && node --check lib/db.js && node --check lib/dynamodb.js && node --check db/migrate.cjs",
     "test": "node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.1177.0",
-    "@aws-sdk/lib-dynamodb": "3.1177.0"
+    "@aws-sdk/client-secrets-manager": "3.1177.0",
+    "@aws-sdk/lib-dynamodb": "3.1177.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "serverless": "3.40.0",
