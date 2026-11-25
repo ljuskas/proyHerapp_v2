@@ -68,23 +68,24 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 
 ## 3. Pendiente
 
-### Tarea 15 — Endurecimiento y control de acceso (siguiente)
+### Tarea 15 — Corregir los hallazgos de seguridad del laboratorio
 
-Objetivo: reducir superficie de ataque e inyección, y completar el control de
-acceso iniciado con el login.
-
-- Propiedad de los registros: que `GET /registros/{id}` solo devuelva los del
-  usuario de la sesión (hoy se leen todos) y decidir qué hacer con los
-  registros anteriores sin `usuarioId`.
-- Rate limiting por IP e identidad, bloqueo temporal tras intentos fallidos y
-  límite de sesiones activas por usuario.
-- CSRF para operaciones con cookie, CORS restringido al origen del frontend y
-  cabeceras de seguridad.
-- Validación estricta de entrada en todos los endpoints y consultas siempre
-  parametrizadas (revisar las existentes).
-- Rotación de sesión al iniciar sesión y purga de sesiones/estados expirados.
-- Logs y auditoría sin datos sensibles; revisar que nunca se registren tokens.
-- Pruebas unitarias de cada control y E2E del flujo con sesión.
+- **Crítica · Login de desarrollo.** Retirar `POST /auth/dev` y
+  `DEV_LOGIN_ENABLED` del stack accesible por el túnel. Reservar ese flujo para
+  pruebas aisladas y revocar las sesiones que haya emitido en el despliegue.
+- **Alta · Túnel de Cloudflare.** Verificar las reglas activas y publicar solo
+  los archivos del frontend y las rutas necesarias de la API. Mantener el
+  dashboard y las APIs administrativas de LocalEmu, incluido Secrets Manager,
+  en la red privada.
+- **Alta · Runner y Docker.** Aislar el runner y el daemon en una VM dedicada
+  al laboratorio. Revisar los permisos efectivos de `main` y exigir revisión
+  independiente para cambios en los workflows y scripts de despliegue.
+- **PostgreSQL.** Restringir el puerto `5432` a la red privada que usan las
+  Lambdas y habilitar TLS con validación del servidor donde se requiera proteger
+  el tráfico entre hosts.
+- **OAuth.** Vincular `state` al navegador que inició el acceso mediante una
+  cookie temporal segura. Verificar esa vinculación en el callback y conservar
+  el vencimiento y el uso único del estado.
 
 ### Otros pendientes
 
