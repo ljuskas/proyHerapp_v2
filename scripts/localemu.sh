@@ -15,13 +15,34 @@ probe() {
     < "$PROJECT_DIR/scripts/verify-localemu.py"
 }
 
+wait_functions() {
+  "${COMPOSE[@]}" exec -T localemu "$PYTHON" - <<'PY'
+import boto3
+client = boto3.client('lambda', endpoint_url='http://127.0.0.1:4566',
+                      region_name='us-east-1', aws_access_key_id='test', aws_secret_access_key='test')
+for name in ['heraap-local-createRegistro', 'heraap-local-getRegistro']:
+    try:
+        client.get_function_configuration(FunctionName=name)
+    except client.exceptions.ResourceNotFoundException:
+        continue
+    print('Esperando Lambda activa:', name, flush=True)
+    client.get_waiter('function_active_v2').wait(
+        FunctionName=name, WaiterConfig={'Delay': 2, 'MaxAttempts': 120})
+PY
+}
+
 case "${1:-help}" in
-  up) "${COMPOSE[@]}" up -d --wait --wait-timeout 180 ;;
+  up)
+    "${COMPOSE[@]}" up -d --wait --wait-timeout 180
+    wait_functions
+    ;;
   stop) "${COMPOSE[@]}" stop localemu ;;
   restart)
     "${COMPOSE[@]}" restart localemu
     "${COMPOSE[@]}" up -d --wait --wait-timeout 180
+    wait_functions
     ;;
+  wait-functions) wait_functions ;;
   status) "${COMPOSE[@]}" ps ;;
   logs) "${COMPOSE[@]}" logs --tail 100 localemu ;;
   config) "${COMPOSE[@]}" config --quiet ;;
@@ -51,6 +72,6 @@ case "${1:-help}" in
       --endpoint-url http://127.0.0.1:4566 "$@"
     ;;
   *)
-    echo 'Uso: bash scripts/localemu.sh {up|stop|restart|status|logs|config|verify|verify-persistence|aws <argumentos>}'
+    echo 'Uso: bash scripts/localemu.sh {up|stop|restart|status|logs|config|verify|verify-persistence|wait-functions|aws <argumentos>}'
     ;;
 esac

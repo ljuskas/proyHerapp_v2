@@ -23,6 +23,10 @@ bash scripts/localemu.sh aws s3 ls
 También están disponibles `npm run infra:up` e `npm run infra:status`.
 No se necesita instalar boto3 ni AWS CLI en el host: los comandos AWS y las
 pruebas usan las herramientas incluidas en la imagen.
+`up` y `restart` esperan también que las dos Lambdas de Heraap estén activas si
+ya existen. El healthcheck general del emulador puede estar saludable mientras
+las funciones restauradas siguen en `Pending`; esa espera evita 502 transitorios
+al consultar la API inmediatamente después de arrancar.
 
 ## Versión, datos y red
 
@@ -68,6 +72,14 @@ bridge Docker. La publicación LAN se limita a la IP configurada, sin usar
 El entrypoint oficial ajusta el grupo del socket Docker y ejecuta LocalEmu con el
 usuario `localemu`. No se modifica el permiso del socket del host. Docker permite
 crear los contenedores de ejecución Lambda en la red dedicada.
+
+Los hooks de `init/boot.d` y `init/ready.d` preparan el almacenamiento temporal de
+S3 para LocalEmu 1.4.0. Esa versión puede restaurar un bucket vacío sin reconstruir
+su directorio, lo que impide escribir nuevos objetos y cargar código Lambda tras
+recrear el contenedor. El hook boot prepara el directorio padre con dueño
+`localemu` y el bucket interno de Lambda de `us-east-1`; el hook ready crea los
+directorios de los buckets visibles restaurados. No cambian permisos del host
+ni las políticas IAM. Se montan como solo lectura en el contenedor.
 
 Persistencia habilitada con snapshots cada 15 segundos, restauración al arrancar
 y guardado final al detener. El periodo de gracia de parada es de 60 segundos.

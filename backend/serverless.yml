@@ -1,5 +1,3 @@
-# Esqueleto de configuración. Aún no contiene recursos ni funciones.
-# El plugin bloquea su uso hasta aprobar e implementar la tarea de backend.
 service: heraap
 frameworkVersion: '3.40.0'
 configValidationMode: error
@@ -9,6 +7,169 @@ provider:
   stage: local
   region: us-east-1
   runtime: nodejs22.x
+  architecture: x86_64
+  memorySize: 256
+  timeout: 15
+  versionFunctions: false
+  logRetentionInDays: 7
+  environment:
+    TABLE_NAME: !Ref RegistrosTable
+    DYNAMODB_ENDPOINT_URL: http://localemu:4566
 
 plugins:
-  - ./plugins/scaffold-only.cjs
+  - ./plugins/local-only.cjs
+  - serverless-localstack
+
+custom:
+  localstack:
+    stages: [local]
+    host: http://127.0.0.1
+    edgePort: 4566
+    autostart: false
+    lambda:
+      mountCode: false
+  cors:
+    origin: '*'
+    headers: [Content-Type]
+    methods: [GET, POST, OPTIONS]
+    allowCredentials: false
+
+package:
+  patterns:
+    - '!tests/**'
+    - '!plugins/**'
+    - '!README.md'
+    - '!package-lock.json'
+    - '!.env*'
+
+functions:
+  createRegistro:
+    handler: handlers/createRegistro.handler
+    role: !GetAtt CreateRegistroRole.Arn
+    events:
+      - http:
+          path: registros
+          method: post
+          cors: ${self:custom.cors}
+  getRegistro:
+    handler: handlers/getRegistro.handler
+    role: !GetAtt GetRegistroRole.Arn
+    events:
+      - http:
+          path: registros/{id}
+          method: get
+          cors: ${self:custom.cors}
+
+resources:
+  Resources:
+    RegistrosTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      UpdateReplacePolicy: Retain
+      Properties:
+        TableName: heraap-registros-${sls:stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    FrontendBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: heraap-frontend-${sls:stage}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          IgnorePublicAcls: false
+          BlockPublicPolicy: false
+          RestrictPublicBuckets: false
+        WebsiteConfiguration:
+          IndexDocument: index.html
+
+    FrontendBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref FrontendBucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal: '*'
+              Action: s3:GetObject
+              Resource: !Sub '${FrontendBucket.Arn}/*'
+
+    CreateRegistroRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: crear-registro-local
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: dynamodb:PutItem
+                  Resource: !GetAtt RegistrosTable.Arn
+                - Effect: Allow
+                  Action: [logs:CreateLogStream, logs:PutLogEvents]
+                  Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}-createRegistro:*'
+
+    GetRegistroRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: consultar-registro-local
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: dynamodb:GetItem
+                  Resource: !GetAtt RegistrosTable.Arn
+                - Effect: Allow
+                  Action: [logs:CreateLogStream, logs:PutLogEvents]
+                  Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}-getRegistro:*'
+
+    GatewayDefault4xx:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        RestApiId: !Ref ApiGatewayRestApi
+        ResponseType: DEFAULT_4XX
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+    GatewayDefault5xx:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        RestApiId: !Ref ApiGatewayRestApi
+        ResponseType: DEFAULT_5XX
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+  Outputs:
+    ApiUrl:
+      Value: !Join ['', ['http://127.0.0.1:4566/_aws/execute-api/', !Ref ApiGatewayRestApi, '/${sls:stage}']]
+    ApiId:
+      Value: !Ref ApiGatewayRestApi
+    TableName:
+      Value: !Ref RegistrosTable
+    FrontendBucketName:
+      Value: !Ref FrontendBucket

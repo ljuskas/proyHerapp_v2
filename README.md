@@ -1,10 +1,9 @@
 # Heraap
 
 Laboratorio serverless para desarrollar con React, Lambda, API Gateway REST,
-DynamoDB y S3 sobre LocalEmu. Esta fase prepara la estructura del repositorio
-y un frontend base compilable. LocalEmu ya dispone de infraestructura Docker con
-persistencia y red de Lambdas. La aplicación de registros y su despliegue aún no
-están implementados.
+DynamoDB y S3 sobre LocalEmu. Incluye backend de creación y consulta de registros,
+infraestructura Docker con persistencia y un frontend base compilable. El formulario
+de registros, la publicación del frontend y el despliegue automático siguen pendientes.
 
 ## Versiones fijadas
 
@@ -17,12 +16,13 @@ están implementados.
 | TypeScript | 5.9.3 |
 | Serverless Framework | 3.40.0 |
 | Adaptador serverless-localstack | 1.3.1 |
+| SDK AWS v3 DynamoDB y DocumentClient | 3.1177.0 |
 | LocalEmu en Docker | 1.4.0 (digest fijado en Compose) |
 
 Los manifiestos usan versiones exactas y cada paquete incluye su lockfile.
 Serverless v3 está sin mantenimiento y se reserva para este laboratorio sin cuenta
-de Serverless. La compatibilidad con Lambda Node.js 22 requiere una adaptación
-explícita y pruebas en la tarea de backend; aún no está validada.
+de Serverless. `backend/plugins/local-only.cjs` adapta el esquema para Node.js 22
+y bloquea destinos, credenciales, regiones y stages distintos de los del laboratorio.
 
 ## Requisitos
 
@@ -61,14 +61,16 @@ Abrir `http://127.0.0.1:5173` en el navegador del equipo cliente.
 
 ```bash
 npm run check
+npm run test:backend
 npm run build
 npm --prefix frontend run preview
 ```
 
-`check` valida versiones, tipos TypeScript, sintaxis del plugin inicial y sintaxis
+`check` valida versiones, tipos TypeScript, sintaxis de handlers/plugins y sintaxis
 Bash y Python. `build` genera `frontend/dist/` con rutas relativas (`base: './'`).
 El preview escucha en loopback (puerto 4173 por defecto).
-Todavía no existen pruebas funcionales de la aplicación de registros. Las pruebas
+Las pruebas unitarias del backend se ejecutan con `npm run test:backend`; después
+de desplegarlo, `npm run test:backend:local` prueba la API real. Las pruebas
 de infraestructura están disponibles mediante `npm run infra:verify` e
 `npm run infra:verify-persistence`; esta última reinicia el emulador.
 
@@ -89,6 +91,21 @@ interno `http://localemu:4566`. El emulador conserva los datos en el volumen
 `heraap-localemu-data`. Para operar sin Node/npm, usar `bash scripts/localemu.sh`.
 Respaldo, migración y retorno se documentan en [infra/README.md](infra/README.md).
 
+## Backend local
+
+```bash
+npm run deploy:backend
+npm run test:backend:local
+```
+
+Se despliega la pila `heraap-local` con tabla `heraap-registros-local`, dos Lambdas,
+API Gateway REST y bucket `heraap-frontend-local`. El script imprime la URL de la
+API y guarda sus outputs bajo `.state/`. Para crear y consultar registros con
+curl, ver [backend/README.md](backend/README.md).
+
+Esta operación todavía es manual. El bucket del frontend queda preparado, pero
+su aplicación no se publica con este comando.
+
 ## Configuración
 
 `.env.example` contiene únicamente credenciales ficticias (`test`), región
@@ -106,11 +123,11 @@ Los archivos `.env`, dependencias, builds y estado del emulador están excluidos
 frontend/                 React + Vite + TypeScript
   src/main.tsx            Punto de entrada del navegador
   src/App.tsx             Pantalla inicial
-backend/                  Herramientas y esqueleto de serverless.yml
-  handlers/               Reservado para las dos Lambdas
-  lib/                    Reservado para utilidades de backend
-  plugins/                Bloqueo temporal del despliegue
-  tests/                  Reservado para pruebas del backend
+backend/                  Lambdas, API REST, DynamoDB y serverless.yml
+  handlers/               Creación y consulta de registros
+  lib/                    DynamoDB, respuestas y logging compartidos
+  plugins/                Adaptación Node.js 22 y guardas de entorno local
+  tests/                  Pruebas unitarias e integración HTTP
 infra/                    Compose de LocalEmu y procedimiento de retorno
 scripts/                  Comprobación del entorno y entrada de despliegue
 .github/workflows/        Comprobaciones de PR en runners de GitHub
@@ -147,10 +164,9 @@ debe cambiar la base a `main`. Las comprobaciones de PR también cubren esas ram
 
 ## Próximas tareas aprobables
 
-1. Implementar backend, recursos e integración con Node.js 22.
-2. Implementar el formulario y la consulta por ID.
-3. Implementar despliegue local idempotente y pruebas de aceptación.
-4. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
+1. Implementar el formulario y la consulta por ID.
+2. Implementar despliegue local completo y pruebas de aceptación.
+3. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
 
 `npm run deploy:local` existe como punto de entrada, pero termina con código 1
 y un mensaje claro hasta implementar esa tarea. No hay un workflow de despliegue
@@ -161,7 +177,7 @@ activo ni se ha registrado un runner en el servidor.
 - `EBADENGINE`: ejecutar `nvm install && nvm use`; comprobar también npm 10.9.9.
 - Error de instalación: verificar acceso a `registry.npmjs.org` y usar `npm ci`
   dentro del paquete correspondiente.
-- Error de Serverless indicando backend pendiente: es el bloqueo esperado de esta
-  estructura inicial. No quitarlo para intentar un despliegue.
+- Error de Serverless sobre stage, endpoint o credenciales: usar
+  `npm run deploy:backend`, que configura el proceso para el laboratorio.
 - LocalEmu inaccesible en 4566: ejecutar `bash scripts/localemu.sh status` y `logs`.
   No arrancar otro laboratorio en el mismo puerto ni el antiguo proceso Python.

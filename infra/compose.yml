@@ -26,6 +26,8 @@ services:
     volumes:
       - localemu-data:/var/lib/localemu
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./init/boot.d:/etc/localemu/init/boot.d:ro
+      - ./init/ready.d:/etc/localemu/init/ready.d:ro
     networks:
       default:
         aliases: [localemu]

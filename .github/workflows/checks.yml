@@ -38,6 +38,8 @@ jobs:
           npm run setup
       - name: Revisar código
         run: npm run check
+      - name: Probar backend
+        run: npm run test:backend
       - name: Validar Compose
         run: bash scripts/localemu.sh config
       - name: Compilar frontend

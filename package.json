@@ -11,9 +11,12 @@
   "scripts": {
     "setup": "npm --prefix frontend ci && npm --prefix backend ci",
     "dev": "npm --prefix frontend run dev",
-    "check": "node scripts/check-runtime.mjs && npm --prefix frontend run check && npm --prefix backend run check && bash -n scripts/deploy-local.sh scripts/localemu.sh && python3 -m py_compile scripts/verify-localemu.py",
+    "check": "node scripts/check-runtime.mjs && npm --prefix frontend run check && npm --prefix backend run check && bash -n scripts/deploy-local.sh scripts/deploy-backend-local.sh scripts/localemu.sh infra/init/boot.d/10-lambda-storage.sh && python3 -m py_compile scripts/verify-localemu.py infra/init/ready.d/10-s3-directories.py",
     "build": "npm --prefix frontend run build",
     "deploy:local": "bash scripts/deploy-local.sh",
+    "deploy:backend": "bash scripts/deploy-backend-local.sh",
+    "test:backend": "npm --prefix backend test",
+    "test:backend:local": "node backend/tests/integration-local.cjs",
     "infra:up": "bash scripts/localemu.sh up",
     "infra:status": "bash scripts/localemu.sh status",
     "infra:verify": "bash scripts/localemu.sh verify",
