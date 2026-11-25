@@ -48,7 +48,8 @@ https://github.com/ljuskas/proyHerapp_v2.
 ## Cobertura del prompt original
 
 - [x] Repositorio `proyHerapp_v2`, estructura y documentación reproducible.
-- [x] `main` protegida: 1 aprobación, check `Verificar estructura y build`,
+- [x] `main` protegida: PR obligatorio sin aprobaciones externas (único
+  desarrollador; cambio solicitado por el usuario), check `Verificar estructura y build`,
   revisión obsoleta invalidada, conversaciones resueltas, historia lineal,
   sin force-push/eliminación; se aplica también a administradores.
 - [x] Backend declarado en `backend/serverless.yml`, stage local, endpoint y
@@ -86,8 +87,8 @@ han eludido protecciones.
 Las ramas 002 a 007 acumulan trabajo previo. Para integrar la versión completa,
 preparar un PR desde la última feature hacia main y revisar el diff completo.
 Coordinar el cierre del PR #1 si queda reemplazado. No integrar únicamente el
-PR #1 esperando que contenga las tareas posteriores. Hace falta la aprobación
-de otro colaborador; no se ha identificado en esta sesión su usuario GitHub.
+PR #1 esperando que contenga las tareas posteriores. El usuario confirmó que trabaja solo y autorizó quitar las aprobaciones
+externas obligatorias. GitHub exige PR y CI, con 0 aprobaciones de terceros.
 Una vez aprobada y fusionada la versión completa, comprobar el workflow.
 
 Commits previos relevantes:
@@ -98,8 +99,8 @@ Commits previos relevantes:
 
 Se abrió el [PR #5](https://github.com/ljuskas/proyHerapp_v2/pull/5), en borrador,
 de feat/heraap-007 directamente a main, con la integración completa. La CI del
-PR corre en GitHub. Falta marcarlo listo para revisión, obtener la aprobación
-obligatoria e integrarlo según autorización del usuario. No se fusionó.
+PR corre en GitHub. Falta marcarlo listo e integrarlo según autorización
+del usuario, con CI verde; ya no requiere un segundo colaborador. No se fusionó.
 No crear nuevos PR entre features. El PR #1 permanece abierto, sin modificar.
 
 ## Entorno operativo

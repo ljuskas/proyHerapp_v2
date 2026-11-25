@@ -156,8 +156,8 @@ Cada tarea requiere aprobación previa. Las ramas usan `feat/heraap-NNN`, con
 correlativo de tres dígitos; los commits siguen Conventional Commits en español.
 Ejemplo: `chore: inicializar estructura del proyecto Heraap`.
 
-`main` será la base de PR. La política prevista exige una revisión del otro
-desarrollador, el check `Verificar estructura y build`, resolución de conversaciones
+`main` es la base de PR. Al trabajar un único desarrollador, la política exige
+PR sin aprobaciones externas, el check `Verificar estructura y build`, resolución de conversaciones
 y bloqueo de force-push y eliminación de la rama, sin excepciones de administrador.
 La protección efectiva se deberá confirmar en GitHub, no solo en esta documentación.
 Su configuración declarada está en `.github/main-protection.json`. Tras crear el
@@ -169,9 +169,9 @@ gh api --method PUT repos/ljuskas/proyHerapp_v2/branches/main/protection \
   --input .github/main-protection.json
 ```
 
-No se permiten excepciones de administrador. El primer PR también necesitará una
-revisión de otro colaborador antes del merge; registrar al segundo desarrollador
-requiere conocer su usuario de GitHub.
+No se permiten excepciones de administrador. Los PR son obligatorios y pueden
+ser fusionados por su autor cuando las comprobaciones requeridas pasan. El
+usuario aprobó eliminar las aprobaciones externas porque trabaja solo.
 
 La base local de `main` se inicializa con un commit vacío para poder presentar el
 primer cambio completo mediante PR desde `feat/heraap-001`.
