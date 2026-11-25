@@ -2,8 +2,9 @@
 
 Laboratorio serverless para desarrollar con React, Lambda, API Gateway REST,
 DynamoDB y S3 sobre LocalEmu. Incluye backend de creación y consulta de registros,
-infraestructura Docker con persistencia y un frontend base compilable. El formulario
-de registros, la publicación del frontend y el despliegue automático siguen pendientes.
+infraestructura Docker con persistencia y un frontend funcional de creación y consulta.
+La aplicación se puede publicar manualmente en S3 local. El comando de despliegue
+completo y la automatización desde `main` siguen pendientes.
 
 ## Versiones fijadas
 
@@ -14,6 +15,7 @@ de registros, la publicación del frontend y el despliegue automático siguen pe
 | React / React DOM | 19.3.1 |
 | Vite | 8.3.8 |
 | TypeScript | 5.9.3 |
+| Playwright | 1.65.1 |
 | Serverless Framework | 3.40.0 |
 | Adaptador serverless-localstack | 1.3.1 |
 | SDK AWS v3 DynamoDB y DocumentClient | 3.1177.0 |
@@ -45,6 +47,7 @@ npm --version
 npm ci
 npm run setup
 cp .env.example .env
+cp frontend/.env.example frontend/.env.local
 npm run dev
 ```
 
@@ -56,12 +59,15 @@ ssh -L 5173:127.0.0.1:5173 usuario@servidor
 ```
 
 Abrir `http://127.0.0.1:5173` en el navegador del equipo cliente.
+Antes de crear o consultar, configurar `VITE_API_BASE_URL` en `frontend/.env.local`
+con la URL del backend. Ver [frontend/README.md](frontend/README.md).
 
 ## Comprobaciones y build
 
 ```bash
 npm run check
 npm run test:backend
+npm run test:frontend
 npm run build
 npm --prefix frontend run preview
 ```
@@ -73,6 +79,10 @@ Las pruebas unitarias del backend se ejecutan con `npm run test:backend`; despu�
 de desplegarlo, `npm run test:backend:local` prueba la API real. Las pruebas
 de infraestructura están disponibles mediante `npm run infra:verify` e
 `npm run infra:verify-persistence`; esta última reinicia el emulador.
+
+`npm run test:frontend:e2e` comprueba escritorio y móvil con respuestas controladas;
+`npm run test:frontend:e2e:local` usa el backend real desplegado. Las instrucciones
+de instalación del navegador y publicación manual están en frontend/README.md.
 
 ## Laboratorio Docker
 
@@ -113,8 +123,10 @@ su aplicación no se publica con este comando.
 de forma explícita cuando se implemente el despliegue; copiar el archivo no
 modifica los perfiles AWS del usuario.
 
-`VITE_API_BASE_URL` se incorporará en el frontend cuando exista la API. El script
-de despliegue generará `frontend/.env.production.local` con el output de la pila.
+`VITE_API_BASE_URL` se define en `frontend/.env.local` para desarrollo y puede
+sobrescribirse en `frontend/.env.production.local` para el build. La API debe ser
+accesible desde el navegador del usuario. El futuro despliegue completo generará
+ese archivo a partir de los outputs de la pila.
 Los archivos `.env`, dependencias, builds y estado del emulador están excluidos de Git.
 
 ## Estructura
@@ -122,7 +134,10 @@ Los archivos `.env`, dependencias, builds y estado del emulador están excluidos
 ```text
 frontend/                 React + Vite + TypeScript
   src/main.tsx            Punto de entrada del navegador
-  src/App.tsx             Pantalla inicial
+  src/App.tsx             Formularios de creación y consulta
+  src/api.ts              Cliente HTTP de registros
+  src/storage.ts          Recuperación del último ID
+  tests/ y e2e/           Pruebas de cliente e interfaz
 backend/                  Lambdas, API REST, DynamoDB y serverless.yml
   handlers/               Creación y consulta de registros
   lib/                    DynamoDB, respuestas y logging compartidos
@@ -164,9 +179,8 @@ debe cambiar la base a `main`. Las comprobaciones de PR también cubren esas ram
 
 ## Próximas tareas aprobables
 
-1. Implementar el formulario y la consulta por ID.
-2. Implementar despliegue local completo y pruebas de aceptación.
-3. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
+1. Implementar despliegue local completo y pruebas de aceptación.
+2. Preparar runner dedicado y workflow de despliegue exclusivo de `main`.
 
 `npm run deploy:local` existe como punto de entrada, pero termina con código 1
 y un mensaje claro hasta implementar esa tarea. No hay un workflow de despliegue

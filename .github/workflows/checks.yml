@@ -40,7 +40,14 @@ jobs:
         run: npm run check
       - name: Probar backend
         run: npm run test:backend
+      - name: Probar cliente frontend
+        run: npm run test:frontend
       - name: Validar Compose
         run: bash scripts/localemu.sh config
       - name: Compilar frontend
         run: npm run build
+      - name: Preparar Chromium
+        working-directory: frontend
+        run: npx --no-install playwright install --with-deps chromium --only-shell
+      - name: Probar interfaz en navegador
+        run: npm run test:frontend:e2e
