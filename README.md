@@ -19,13 +19,32 @@ con el runner dedicado del servidor.
 | Playwright | 1.65.1 |
 | Serverless Framework | 3.40.0 |
 | Adaptador serverless-localstack | 1.3.1 |
-| SDK AWS v3 DynamoDB y DocumentClient | 3.1177.0 |
+| SDK AWS v3 DynamoDB, DocumentClient y Secrets Manager | 3.1177.0 |
+| Cliente PostgreSQL (`pg`) | 8.23.1 |
 | LocalEmu en Docker | 1.4.0 (digest fijado en Compose) |
 
 Los manifiestos usan versiones exactas y cada paquete incluye su lockfile.
 Serverless v3 está sin mantenimiento y se reserva para este laboratorio sin cuenta
 de Serverless. `backend/plugins/local-only.cjs` adapta el esquema para Node.js 22
 y bloquea destinos, credenciales, regiones y stages distintos de los del laboratorio.
+
+## Base de datos y secretos
+
+La configuración de la aplicación no vive en el despliegue: el contenido de `.env`
+se publica en LocalEmu Secrets Manager como `heraap/config` y las Lambdas lo leen
+con el SDK. PostgreSQL es el contenedor `postgresql` del servidor, con base y rol
+`heraap` dedicados.
+
+```bash
+cp .env.example .env          # completar DB_PASSWORD
+npm run db:init               # crea rol, base y aplica migraciones (idempotente)
+npm run secrets:publish       # crea o actualiza heraap/config desde .env
+npm run deploy:backend        # publica el secreto antes de desplegar
+```
+
+`npm run db:init` necesita el contenedor `postgresql` en ejecución y acceso a
+Docker. Las migraciones están en `backend/db/migrations/` y se aplican una sola
+vez, registradas en `schema_migrations`. Ningún valor de `.env` se versiona.
 
 ## Requisitos
 

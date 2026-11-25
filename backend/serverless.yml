@@ -13,8 +13,8 @@ provider:
   versionFunctions: false
   logRetentionInDays: 7
   environment:
-    TABLE_NAME: !Ref RegistrosTable
-    DYNAMODB_ENDPOINT_URL: http://localemu:4566
+    SECRET_ID: heraap/config
+    SECRETS_ENDPOINT_URL: http://localemu:4566
 
 plugins:
   - ./plugins/local-only.cjs
@@ -119,6 +119,9 @@ resources:
                   Action: dynamodb:PutItem
                   Resource: !GetAtt RegistrosTable.Arn
                 - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:heraap/config-*'
+                - Effect: Allow
                   Action: [logs:CreateLogStream, logs:PutLogEvents]
                   Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}-createRegistro:*'
 
@@ -140,6 +143,9 @@ resources:
                 - Effect: Allow
                   Action: dynamodb:GetItem
                   Resource: !GetAtt RegistrosTable.Arn
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:heraap/config-*'
                 - Effect: Allow
                   Action: [logs:CreateLogStream, logs:PutLogEvents]
                   Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}-getRegistro:*'

@@ -25,6 +25,9 @@ anterior sigue disponible en el historial de git.
 - Stack: LocalEmu 1.4.0 en Docker (imagen fijada por digest), API Gateway REST,
   dos Lambdas Node.js 22, DynamoDB (`heraap-registros-local`, PK string) y S3
   para el frontend React/Vite/TypeScript.
+- PostgreSQL 17.4 operativo con base y rol `heraap`: tablas `usuarios`,
+  `identidades`, `sesiones`, `auditoria` y `schema_migrations`. El secreto
+  `heraap/config` en LocalEmu agrupa toda la configuración de `.env`.
 - Entorno local verificado con el pin del repo: `npm ci`, `npm run setup`,
   `npm run check`, tests de backend 9/9, de frontend 9/9 y del hook del runner
   3/3, con Node.js 22.23.5 y npm 10.9.9.
@@ -51,7 +54,7 @@ anterior sigue disponible en el historial de git.
 
 ## 3. Backlog aprobado pendiente
 
-### Tarea 0 — Base de datos relacional y secretos
+### Tarea 0 — Base de datos relacional y secretos (completada en `feat/heraap-011`)
 
 Objetivo: almacenar usuarios, identidades y sesiones en PostgreSQL, con las
 credenciales y la configuración sensible en Secrets Manager, preparado para un
@@ -173,8 +176,13 @@ Playwright requiere Chromium y no está instalado; reinstalarlo bajo
   script de despliegue.
 - Las pruebas reales crean registros que se conservan (sin borrado en fase 1).
 
-## 7. Próximo paso
+## 7. Estado de la tarea 0 y próximo paso
 
-Solicitar aprobación para ejecutar la tarea 0 (PostgreSQL + secretos) en
-`feat/heraap-011`. Las tareas 1 y 2 quedan descritas, pero no se inician sin
-aprobación expresa.
+La tarea 0 se ejecutó en `feat/heraap-011`: base `heraap`, rol `heraap`, esquema
+versionado, secreto `heraap/config` (15 claves) y lectura por SDK con IAM acotado.
+Verificado: 21 pruebas unitarias, migraciones idempotentes, `secrets:publish`
+idempotente y API real 201/200/400/404 tras el despliegue. Falta el PR a `main`.
+
+Próximo paso: solicitar aprobación de la tarea 1 (login con Google) y crear
+`feat/heraap-012` desde `main` actualizado. La tarea 2 queda descrita, pero no se
+inicia sin aprobación expresa.

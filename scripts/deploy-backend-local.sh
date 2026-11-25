@@ -24,6 +24,14 @@ export AWS_ENDPOINT_URL=http://127.0.0.1:4566
 export SLS_TELEMETRY_DISABLED=1
 export SLS_AWS_REQUEST_MAX_RETRIES=1
 
+# La configuración vive en LocalEmu Secrets Manager. Con .env local se publica
+# antes del despliegue; en CI (.env ausente) se exige que el secreto ya exista.
+if [[ -f .env ]]; then
+  bash scripts/publish-secrets-local.sh
+else
+  bash scripts/publish-secrets-local.sh --check
+fi
+
 mkdir -p .state
 exec 9>.state/deploy-backend.lock
 flock -n 9 || { echo 'Ya hay un despliegue de backend en ejecución.' >&2; exit 1; }

@@ -7,9 +7,12 @@ infraestructura: `serverless.yml`. No se utiliza ninguna cuenta AWS real.
 
 - Node.js de desarrollo: 22.23.5; runtime Lambda: `nodejs22.x`.
 - npm: 10.9.9; Serverless Framework: 3.40.0; serverless-localstack: 1.3.1.
-- `@aws-sdk/client-dynamodb` y `@aws-sdk/lib-dynamodb`: 3.1177.0.
+- `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb` y
+  `@aws-sdk/client-secrets-manager`: 3.1177.0; `pg`: 8.23.1.
 - `handlers/createRegistro.js` y `handlers/getRegistro.js`: puntos de entrada Lambda.
-- `lib/`: cliente DynamoDB, respuestas CORS y logging estructurado.
+- `lib/`: configuración por secreto, cliente DynamoDB, acceso a PostgreSQL,
+  respuestas CORS y logging estructurado.
+- `db/migrations/`: esquema versionado de PostgreSQL; `db/migrate.cjs` lo aplica.
 - `plugins/local-only.cjs`: adaptación de runtime y restricciones del laboratorio.
 - `tests/`: pruebas unitarias e integración HTTP local.
 
@@ -49,12 +52,41 @@ Recursos de la pila `heraap-local`:
 | Lambda POST | `heraap-local-createRegistro`, permiso DynamoDB `PutItem` |
 | Lambda GET | `heraap-local-getRegistro`, permiso DynamoDB `GetItem` |
 | Logs | Grupos por función, retención de 7 días |
+| Secreto | `heraap/config`, creado fuera de CloudFormation por el script de despliegue |
+| Base | PostgreSQL `heraap` (contenedor del host), rol `heraap` |
 
 Los roles también permiten escribir logs únicamente en el grupo de su función.
 La tabla tiene `DeletionPolicy` y `UpdateReplacePolicy: Retain`. Un despliegue
 normal actualiza la pila sin borrar los registros. La configuración IAM está
 declarada con permisos mínimos; el emulador mantiene su configuración global de
 IAM, sin activar enforcement en esta tarea.
+
+## Configuración y secretos
+
+Las Lambdas solo reciben `SECRET_ID` y `SECRETS_ENDPOINT_URL`; el resto de la
+configuración (`TABLE_NAME`, `DYNAMODB_ENDPOINT_URL`, `DB_*`) se lee del secreto
+`heraap/config` con caché de cinco minutos en memoria. Un secreto ausente, vacío
+o sin las claves obligatorias produce un error explícito, nunca valores por defecto.
+
+```bash
+npm run db:init          # rol, base y migraciones (idempotente)
+npm run secrets:publish  # desde .env; CreateSecret/PutSecretValue exigen token UUID
+npm run deploy:backend   # publica el secreto (o lo verifica si no hay .env)
+```
+
+En CI no hay `.env`: el despliegue exige que el secreto ya exista y falla con un
+mensaje claro si no está. El secreto vive en el volumen de LocalEmu; si se recrea
+el volumen, hay que volver a ejecutar `npm run secrets:publish`.
+
+## Base de datos
+
+PostgreSQL 17.4 en el contenedor `postgresql` del servidor, accesible desde la red
+`heraap-local` por `172.18.0.1:5432`. Tablas iniciales: `usuarios`,
+`identidades`, `sesiones`, `auditoria` y `schema_migrations`.
+
+Las migraciones se aplican con `node backend/db/migrate.cjs` dentro de una
+transacción por archivo; una migración fallida se revierte y no se registra.
+La tarea de login usará estas tablas; todavía no hay endpoints que las consulten.
 
 ## Contrato HTTP
 
@@ -136,7 +168,7 @@ restaurados antes de usar el servicio. Aplicar cambios de infraestructura con
 `npm run infra:up` antes de desplegar si el contenedor fue creado con una
 configuración anterior.
 
-Verificación de esta fase: 9 pruebas unitarias satisfactorias; API real con
+Verificación de esta fase: 21 pruebas unitarias satisfactorias; API real con
 201/200/400/404 y CORS; redeploy efectivo conservando un registro; restauración
 de las dos Lambdas y los registros tras recrear/reiniciar LocalEmu; consulta por
 LAN y lectura HTTP anónima de un objeto temporal del bucket frontend. Los casos
