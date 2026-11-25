@@ -64,8 +64,8 @@ https://github.com/ljuskas/proyHerapp_v2.
 - [x] Versiones fijadas y credenciales ficticias acotadas al proceso.
 - [x] Criterios funcionales: crear/recargar/consultar, 400/404, CORS y assets S3.
 - [x] Repetir deploy conserva registros; comprobado en tarea 6.
-- [ ] Clonar y desplegar como usuario runner: validación en curso al iniciar
-  esta entrega; actualizar esta línea con el resultado antes de finalizar.
+- [x] Clonar y desplegar como usuario runner: clon público limpio y despliegue
+  real completos bajo heraap-runner; API y conservación comprobadas.
 - [x] Workflow `.github/workflows/deploy-local.yml` implementado con push main,
   validaciones previas y publicación en runner dedicado.
 - [x] Runner Linux instalado como servicio con cuenta propia y grupo Docker.
@@ -96,8 +96,11 @@ Commits previos relevantes:
 - `5bf9420`: acceso por túnel HTTPS (feat/heraap-005).
 - `26f3ac1`: despliegue completo (feat/heraap-006).
 
-No crear nuevos PR entre features. Esta tarea deja commits en feat/heraap-007;
-la integración hacia main sigue requiriendo revisión.
+Se abrió el [PR #5](https://github.com/ljuskas/proyHerapp_v2/pull/5), en borrador,
+de feat/heraap-007 directamente a main, con la integración completa. La CI del
+PR corre en GitHub. Falta marcarlo listo para revisión, obtener la aprobación
+obligatoria e integrarlo según autorización del usuario. No se fusionó.
+No crear nuevos PR entre features. El PR #1 permanece abierto, sin modificar.
 
 ## Entorno operativo
 
@@ -185,5 +188,20 @@ Consultar infra/runner.md para servicio, registro y diagnóstico.
 - Tipos y sintaxis: npm run check.
 - Workflows: actionlint 1.7.12 con label local declarado.
 - Instalación servicio y acceso Docker del usuario runner: verificados.
-- Pendiente registrar aquí el resultado del clon limpio y de la publicación manual
-  con ese usuario. El run automático real queda pendiente hasta integrar en main.
+- Runner online en la API GitHub, servicio activo y habilitado al arranque.
+- Clon público limpio en `/var/lib/heraap-runner/acceptance`, commit de código
+  `9380ff3e76d6f74ab5db81d23f08bab2f8ce5a53`. Ejecutado como heraap-runner con
+  Node fijado en `/var/lib/heraap-runner/tools/node-v22.23.5-linux-x64/bin`.
+- npm ci raíz y deploy completo: correctos; Lambdas desplegadas desde el clon.
+- API real: 201/200/400/404 y CORS correctos; se creó el registro de prueba
+  `bdb22f1c-8dbf-46a9-98c7-cf2f8af8d1c1` en ese checkout.
+- Registro anterior `58de73bf-8740-4afa-9d1d-39870a524d70` conservado tras desplegar.
+- Manifiesto público consultado: commit 9380ff3, workingTreeDirty false,
+  source manual, fecha 2026-11-25T03:37:35Z. Esto fue una prueba manual con el
+  usuario del runner, no una ejecución disparada por GitHub Actions.
+- El código de implementación está en 9380ff3; los commits posteriores de esta
+  entrega actualizan la documentación de resultados. El SHA publicado puede
+  diferir del último commit documental sin indicar un despliegue automático.
+- El run automático real queda pendiente hasta integrar en main. Consultar la
+  CI del PR #5 y Actions antes de continuar; no asumir que estar online equivale
+  a haber desplegado automáticamente.
