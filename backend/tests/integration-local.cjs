@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { readFileSync, writeFileSync, mkdirSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { randomUUID } = require('node:crypto');
+const { crearSesionPrueba } = require('./soporte/sesion-prueba.cjs');
 
 const root = resolve(__dirname, '../..');
 const outputs = Object.fromEntries(JSON.parse(readFileSync(resolve(root, '.state/backend-outputs.json'), 'utf8'))
@@ -27,19 +28,10 @@ async function request(path, options = {}) {
 }
 
 async function iniciarSesion() {
-  const result = await fetch(base + '/auth/dev', {
-    method: 'POST',
-    headers: { Origin: origin, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'integracion@example.com', nombre: 'Integración' }),
-    signal: AbortSignal.timeout(60000),
-  });
-  if (result.status !== 200) throw new Error('El acceso de desarrollo no está disponible: ' + await result.text());
-  const header = typeof result.headers.getSetCookie === 'function'
-    ? result.headers.getSetCookie()[0] : result.headers.get('set-cookie');
-  if (!header) throw new Error('El acceso no devolvió cookie de sesión.');
-  cookie = header.split(';')[0];
-  const sesion = await request('/sesion');
-  if (sesion.status !== 200) throw new Error('La sesión creada no es válida.');
+  const sesion = await crearSesionPrueba({ email: 'integracion@example.com', nombre: 'Integración' });
+  cookie = sesion.cookie;
+  const actual = await request('/sesion');
+  if (actual.status !== 200) throw new Error('La sesión creada no es válida.');
 }
 
 async function main() {
@@ -56,6 +48,12 @@ async function main() {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"nombre":"Sin sesión"}',
   });
   assert.equal(sinSesion.status, 401);
+
+  const sinAtajo = await request('/auth/dev', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"email":"a@b.cl"}',
+  });
+  assert.ok(sinAtajo.status >= 400, 'El acceso de desarrollo no debe existir: ' + sinAtajo.status);
+  assert.equal(sinAtajo.headers.get('set-cookie'), null);
 
   await iniciarSesion();
 

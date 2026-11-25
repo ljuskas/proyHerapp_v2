@@ -52,9 +52,10 @@ Sin esas claves el botón de acceso devuelve 503 y el resto de la app sigue
 funcionando. Si el `ApiId` cambiara, hay que actualizar la URI autorizada en
 Google Cloud y `GOOGLE_REDIRECT_URI`.
 
-En el laboratorio existe un atajo `POST /auth/dev` con `{"email":"..."}` que crea
-una sesión sin Google. Solo está activo con `DEV_LOGIN_ENABLED=1`, que el stack
-fija para `stage: local`; no debe existir en un entorno real.
+No hay ningún acceso alternativo a Google: el despliegue no publica rutas para
+crear sesiones. Las pruebas que necesitan una sesión la crean directamente en
+PostgreSQL con `backend/tests/soporte/sesion-prueba.cjs`, que solo funciona con
+las credenciales del laboratorio.
 
 ## Base de datos y secretos
 
