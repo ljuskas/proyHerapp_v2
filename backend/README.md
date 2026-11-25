@@ -63,6 +63,9 @@ IAM, sin activar enforcement en esta tarea.
 
 ## Autenticación
 
+`FRONTEND_URL` es el destino final tras el login y debe incluir `index.html`:
+LocalEmu devuelve el listado del bucket en la ruta raíz del sitio.
+
 `GOOGLE_REDIRECT_URI` debe ser la URL pública del callback,
 `https://local.deptofeliz.uk/_aws/execute-api/<API_ID>/local/auth/google/callback`,
 y coincidir exactamente con la autorizada en Google Cloud; el código rechaza
