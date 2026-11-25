@@ -8,12 +8,13 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 
 ## 1. Punto de partida verificado
 
-- `main` = `24d438f` (*fix: redirige al index.html tras el login (#13)*). Es la
-  única rama, local y remota. No hay PR abiertos.
-- Último despliegue automático correcto: manifiesto público en `24d438f`,
-  `source github-actions`, `workingTreeDirty false`.
+- `main` = `a049ffd` (*docs: actualiza la tarea 15 con los hallazgos de
+  seguridad (#15)*), única rama, local y remota.
+- Último despliegue automático completo en `24d438f`; la tarea 16 cambia el
+  stack y se despliega al fusionar su PR.
 - API protegida: sin cookie, `POST /registros` y `GET /registros/{id}` responden 401.
-- `POST /auth/dev` (login sin Google) solo existe en `stage: local`.
+- Sin endpoint para crear sesiones: se retiraron `POST /auth/dev`, su bandera y
+  su handler (tarea 16). Las pruebas usan `backend/tests/soporte/sesion-prueba.cjs`.
 - Sin rollback automático ni limpieza de assets históricos.
 
 ## 2. Tareas realizadas
@@ -32,6 +33,8 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 | 12 | Login con Google y sesiones protegidas | `969830e` (PR #10) |
 | 13 | URI de redirección del callback | `2bc239f` (PR #11) |
 | 14 | `FRONTEND_URL` con `index.html` | `24d438f` (PR #13) |
+| 15 | Hallazgos de seguridad documentados | `a049ffd` (PR #15) |
+| 16 | Retiro del acceso de desarrollo | PR #16 |
 
 ### Base de datos y secretos (tarea 11)
 
@@ -68,32 +71,42 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 
 ## 3. Pendiente
 
-### Tarea 15 — Corregir los hallazgos de seguridad del laboratorio
+### Tareas 17-24 — Endurecimiento del laboratorio
 
-- **Crítica · Login de desarrollo.** Retirar `POST /auth/dev` y
-  `DEV_LOGIN_ENABLED` del stack accesible por el túnel. Reservar ese flujo para
-  pruebas aisladas y revocar las sesiones que haya emitido en el despliegue.
-- **Alta · Túnel de Cloudflare.** Verificar las reglas activas y publicar solo
-  los archivos del frontend y las rutas necesarias de la API. Mantener el
-  dashboard y las APIs administrativas de LocalEmu, incluido Secrets Manager,
-  en la red privada.
-- **Alta · Runner y Docker.** Aislar el runner y el daemon en una VM dedicada
-  al laboratorio. Revisar los permisos efectivos de `main` y exigir revisión
-  independiente para cambios en los workflows y scripts de despliegue.
-- **PostgreSQL.** Restringir el puerto `5432` a la red privada que usan las
-  Lambdas y habilitar TLS con validación del servidor donde se requiera proteger
-  el tráfico entre hosts.
-- **OAuth.** Vincular `state` al navegador que inició el acceso mediante una
-  cookie temporal segura. Verificar esa vinculación en el callback y conservar
-  el vencimiento y el uso único del estado.
+Se ejecutan en este orden, cada una en su rama `feat/heraap-NNN`, con aprobación
+previa y aprobación aparte del mensaje de commit.
+
+| # | Tarea | Alcance | Aceptación |
+| --- | --- | --- | --- |
+| 17 | Cerrar el túnel y el emulador | Reglas de ingress en Cloudflare: solo `/_aws/execute-api/*` y `/heraap-frontend-local/*`; `DASHBOARD_API_OPEN=0`; 4566 solo en loopback; rotar el token del túnel | `/_localemu/health` y `ListSecrets` públicos dejan de responder |
+| 18 | Rotar lo expuesto | Nueva `DB_PASSWORD` y `GOOGLE_CLIENT_SECRET`, republicar el secreto y redesplegar | Las claves antiguas no sirven y el login sigue funcionando |
+| 19 | Aislar runner y pipeline | `CODEOWNERS` de `.github/`, `scripts/` e `infra/`; revisión obligatoria; runner en VM dedicada | Un PR que toca un workflow no se fusiona sin revisión |
+| 20 | PostgreSQL seguro | 5432 solo en red privada, TLS con CA propia y `verify-full`, rol con privilegios mínimos | Sin TLS la conexión se rechaza; API y migraciones funcionan |
+| 21 | `state` ligado al navegador | Cookie temporal con el hash del `state`, verificada en el callback, con vencimiento y uso único | `state` válido sin cookie y doble uso rechazados |
+| 22 | Autorización y propiedad | `GET /registros/{id}` solo devuelve los del usuario de la sesión; política para registros sin `usuarioId` | Un usuario no lee el registro de otro |
+| 23 | Endurecer la API | CORS del frontend, comprobación de `Origin`, cabeceras de seguridad, validación estricta, límite de intentos, tope de sesiones, rotación y purga, logs sin tokens | Pruebas por control; una ráfaga de intentos responde 429 |
+| 24 | Cierre | Login real con Google, actualización de este documento, decisión sobre RDS y modo *Testing* | Manifiesto, API y suites en verde |
+
+### Hallazgos verificados el 2026-11-25
+
+- `POST /auth/dev` respondía en el stack público (400 con cuerpo inválido).
+- `GET https://local.deptofeliz.uk/_localemu/health` respondía 200: el túnel
+  publicaba el puerto 4566 completo, no solo las rutas de la aplicación.
+- `ListSecrets` firmado con las credenciales ficticias `test/test` devolvía
+  `heraap/config`, con la contraseña de PostgreSQL y el client secret de Google.
+  Solo se listó el secreto; no se leyeron los valores. Se dan por comprometidos.
+- El túnel es remoto (token en `/etc/systemd/system/cloudflared.service`), así
+  que sus reglas se cambian en el panel de Cloudflare, no en el repositorio.
+- Las tareas 16 y 18 cubren el retiro del endpoint y la rotación; el resto del
+  orden queda en la tabla anterior.
 
 ### Otros pendientes
 
 - Confirmar el login real con Google en una ventana privada y documentar el
   resultado.
-- Antes de cualquier entorno real: quitar `DEV_LOGIN_ENABLED` y el endpoint
-  `/auth/dev`, y sustituir el contenedor PostgreSQL por RDS (hoy LocalEmu no
-  implementa RDS).
+- Antes de cualquier entorno real: sustituir el contenedor PostgreSQL por RDS
+  (hoy LocalEmu no implementa RDS) y crear un stage distinto de `local`, porque
+  el plugin solo permite el laboratorio.
 - Valorar reiniciar la pantalla de consentimiento de Google cuando deje de
   estar en modo *Testing*.
 - Opcional: validación independiente en WSL2 con systemd (no probada).
@@ -108,6 +121,8 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 - `main` protegida: PR obligatorio, check «Verificar estructura y build»,
   0 aprobaciones de terceros, historia lineal, sin force-push.
 - Cada módulo nuevo incluye pruebas unitarias propias.
+- No se publica ningún endpoint para crear sesiones: `npm run check` falla si
+  vuelven `auth/dev` o `DEV_LOGIN_ENABLED`.
 - No tocar AWS real, ni ejecutar `npm audit fix --force`, ni cambiar Serverless
   como efecto colateral.
 
@@ -142,6 +157,7 @@ Herramientas en `.state/tools/` (ignorado por git; `/tmp` se vacía):
 npm ci && npm run setup && npm run check
 npm run test:backend && npm run test:frontend && npm run test:runner
 npm run db:init
+node backend/tests/soporte/sesion-prueba.cjs     # cookie de sesión de prueba
 npm run secrets:publish
 npm run deploy:local
 npm run test:backend:local
@@ -160,3 +176,9 @@ HERAAP_E2E_FRONTEND_URL=https://local.deptofeliz.uk/heraap-frontend-local/index.
 - Las pruebas reales crean registros que se conservan; no hay borrado ni
   listado todavía.
 - `.state/`, `.env*` y los respaldos están ignorados: nunca publicar credenciales.
+- El túnel publicó todo el puerto 4566 y el secreto fue legible: `DB_PASSWORD`
+  y `GOOGLE_CLIENT_SECRET` se consideran comprometidos hasta completar las
+  tareas 17 y 18.
+- Se revocaron las sesiones de las cuentas que habían usado el acceso de
+  desarrollo (5 sesiones de 3 cuentas, 2026-11-25); el login con Google es otra
+  vez el único camino de acceso.
