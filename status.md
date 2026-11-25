@@ -199,9 +199,9 @@ Consultar infra/runner.md para servicio, registro y diagnóstico.
 - Manifiesto público consultado: commit 9380ff3, workingTreeDirty false,
   source manual, fecha 2026-11-25T03:37:35Z. Esto fue una prueba manual con el
   usuario del runner, no una ejecución disparada por GitHub Actions.
-- El código de implementación está en 9380ff3; los commits posteriores de esta
-  entrega actualizan la documentación de resultados. El SHA publicado puede
-  diferir del último commit documental sin indicar un despliegue automático.
+- El manifiesto corresponde al clon probado en 9380ff3. Consultar git log para
+  cambios posteriores de documentación y operación del runner; que cambie el
+  HEAD de una feature no implica un despliegue automático.
 - El run automático real queda pendiente hasta integrar en main. Consultar la
   CI del PR #5 y Actions antes de continuar; no asumir que estar online equivale
   a haber desplegado automáticamente.
