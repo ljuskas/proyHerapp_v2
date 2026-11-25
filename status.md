@@ -30,7 +30,9 @@ anterior sigue disponible en el historial de git.
   `heraap/config` en LocalEmu agrupa toda la configuración de `.env`.
 - Acceso con Google implementado (PKCE, verificación de `id_token`, sesión en
   PostgreSQL con cookie `HttpOnly; Secure`). Sin credenciales de Google aún:
-  hace falta crear el cliente OAuth y publicar `GOOGLE_*` en el secreto.
+  falta crear el cliente OAuth autorizando la URI del callback
+  `https://local.deptofeliz.uk/_aws/execute-api/<API_ID>/local/auth/google/callback`
+  y publicar `GOOGLE_*` en el secreto.
 - Entorno local verificado con el pin del repo: `npm ci`, `npm run setup`,
   `npm run check`, tests de backend 9/9, de frontend 9/9 y del hook del runner
   3/3, con Node.js 22.23.5 y npm 10.9.9.

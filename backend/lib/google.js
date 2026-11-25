@@ -60,6 +60,9 @@ function createGoogleClient({
 }) {
   if (!clientId || !clientSecret) throw new Error('Falta la configuración de Google.');
   if (!redirectUri) throw new Error('Falta la URL de redirección de Google.');
+  if (!/\/auth\/google\/callback$/.test(redirectUri)) {
+    throw new Error('GOOGLE_REDIRECT_URI debe apuntar a /auth/google/callback del backend.');
+  }
 
   return {
     start() {

@@ -63,6 +63,11 @@ IAM, sin activar enforcement en esta tarea.
 
 ## Autenticación
 
+`GOOGLE_REDIRECT_URI` debe ser la URL pública del callback,
+`https://local.deptofeliz.uk/_aws/execute-api/<API_ID>/local/auth/google/callback`,
+y coincidir exactamente con la autorizada en Google Cloud; el código rechaza
+cualquier otra ruta para evitar registrar la redirección equivocada.
+
 Flujo OAuth 2.0 con PKCE: `start` genera `state`, `nonce` y `code_verifier`, guarda
 solo el hash del estado en `auth_estados` (10 minutos, un solo uso) y redirige a
 Google. El callback consume el estado, canjea el código con el client secret

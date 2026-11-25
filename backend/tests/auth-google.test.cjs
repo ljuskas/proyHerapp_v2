@@ -7,7 +7,7 @@ const { authorizationUrl, codeChallenge, createGoogleClient } = require('../lib/
 const base = {
   clientId: 'cliente-de-prueba.apps.googleusercontent.com',
   clientSecret: 'secreto-de-prueba',
-  redirectUri: 'https://local.deptofeliz.uk/heraap-frontend-local/',
+  redirectUri: 'https://local.deptofeliz.uk/_aws/execute-api/xsmydwgk1h/local/auth/google/callback',
 };
 
 test('authorizationUrl incluye PKCE, state, nonce y alcance mínimo', () => {
@@ -88,4 +88,5 @@ test('createGoogleClient exige client ID, secret y redirección', () => {
   assert.throws(() => createGoogleClient({ ...base, clientId: '' }), /configuración de Google/);
   assert.throws(() => createGoogleClient({ ...base, clientSecret: '' }), /configuración de Google/);
   assert.throws(() => createGoogleClient({ ...base, redirectUri: '' }), /redirección/);
+  assert.throws(() => createGoogleClient({ ...base, redirectUri: 'https://local.deptofeliz.uk/heraap-frontend-local/' }), /callback/);
 });
