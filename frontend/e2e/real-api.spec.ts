@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -8,23 +9,30 @@ test.skip(process.env.HERAAP_E2E_REAL_API !== '1', 'Requiere backend desplegado 
 test.use({ actionTimeout: 20000 });
 test.setTimeout(60000);
 
-test('flujo real: crear, recargar y consultar el registro conservado', async ({ page }, testInfo) => {
+test('flujo real: crear, recargar y consultar el registro conservado', async ({ page, context }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(process.env.HERAAP_E2E_FRONTEND_URL || '/');
-  // El flujo real de Google no se automatiza: se abre sesión con el atajo local.
-  const acceso = page.getByRole('heading', { name: 'Entra para ver tus registros.' });
-  const paneles = page.getByRole('region', { name: 'Nuevo registro' });
-  await expect(acceso.or(paneles)).toBeVisible({ timeout: 20000 });
-  if (await acceso.isVisible()) {
-    const href = await page.getByRole('link', { name: 'Continuar con Google' }).getAttribute('href');
-    expect(href).toBeTruthy();
-    const respuesta = await page.request.post(href!.replace('/auth/google/start', '/auth/dev'), {
-      data: { email: 'e2e@example.com', nombre: 'Prueba E2E' },
-    });
-    expect(respuesta.ok()).toBeTruthy();
-    await page.reload();
-  }
+  // El flujo real de Google no se automatiza: la sesión de prueba se crea
+  // directamente en PostgreSQL, sin ningún endpoint de acceso alternativo.
+  await expect(page.getByRole('heading', { name: 'Entra para ver tus registros.' })).toBeVisible({ timeout: 20000 });
+  const sesion = JSON.parse(
+    execFileSync(process.execPath, [resolve(process.cwd(), '../backend/tests/soporte/sesion-prueba.cjs')], {
+      encoding: 'utf8',
+      timeout: 60000,
+    }).trim(),
+  ) as { token: string; cookieName: string };
+  const destino = new URL(page.url());
+  await context.addCookies([{
+    name: sesion.cookieName,
+    value: sesion.token,
+    domain: destino.hostname,
+    path: '/',
+    httpOnly: true,
+    secure: destino.protocol === 'https:',
+    sameSite: 'Lax',
+  }]);
+  await page.reload();
   await expect(page.getByRole('region', { name: 'Nuevo registro' })).toBeVisible({ timeout: 20000 });
   const nombre = `Prueba de interfaz ${testInfo.project.name}`;
   await page.getByLabel('Nombre', { exact: true }).fill(nombre);

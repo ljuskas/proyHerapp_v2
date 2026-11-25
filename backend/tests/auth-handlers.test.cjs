@@ -4,7 +4,6 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const startHandler = require('../handlers/authGoogleStart');
 const callbackHandler = require('../handlers/authGoogleCallback');
-const authDev = require('../handlers/authDev');
 const sesion = require('../handlers/sesion');
 const logout = require('../handlers/logout');
 const { hashToken } = require('../lib/session');
@@ -110,30 +109,6 @@ test('callback con error de Google informa cancelación sin tocar la base', asyn
   const result = await handler({ queryStringParameters: { error: 'access_denied' } }, { awsRequestId: 'r-6' });
   assert.equal(new URL(result.headers.Location).searchParams.get('motivo'), 'cancelado');
   assert.equal(calls.length, 0);
-});
-
-test('authDev está desactivado salvo con la bandera del laboratorio', async () => {
-  delete process.env.DEV_LOGIN_ENABLED;
-  const { deps: d } = deps();
-  const handler = authDev.createHandler({ load: async () => d });
-  assert.equal((await handler({ body: '{"email":"a@b.cl"}' }, {})).statusCode, 404);
-});
-
-test('authDev crea sesión con correo válido y rechaza el inválido', async () => {
-  process.env.DEV_LOGIN_ENABLED = '1';
-  try {
-    const { deps: d, calls } = deps();
-    const handler = authDev.createHandler({ load: async () => d });
-    const invalido = await handler({ body: '{"email":"sin-arroba"}' }, {});
-    assert.equal(invalido.statusCode, 400);
-    const ok = await handler({ body: '{"email":"A@B.CL","nombre":"Ana"}' }, { awsRequestId: 'r-7' });
-    assert.equal(ok.statusCode, 200);
-    assert.match(ok.headers['Set-Cookie'], /HttpOnly/);
-    assert.deepEqual(JSON.parse(ok.body).usuario, { id: 'u-1', email: 'a@b.cl', nombre: 'A' });
-    assert.ok(calls.some(([tipo]) => tipo === 'sesion'));
-  } finally {
-    delete process.env.DEV_LOGIN_ENABLED;
-  }
 });
 
 test('sesion devuelve 200 con el usuario y 401 sin cookie', async () => {

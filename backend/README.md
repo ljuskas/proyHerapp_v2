@@ -82,14 +82,15 @@ junto a expiración de 7 días, IP y user agent. La cookie es
 `HttpOnly; Secure; SameSite=Lax; Path=/`. `logout` borra la fila y expira la cookie.
 Las rutas de registros exigen sesión y guardan `usuarioId` en los registros nuevos.
 
-Prueba manual en el laboratorio (el atajo solo existe en `stage: local`):
+Prueba manual en el laboratorio. No hay endpoint para crear sesiones: la sesión
+de prueba se crea en PostgreSQL y su cookie se reutiliza en las peticiones.
 
 ```bash
 API=http://127.0.0.1:4566/_aws/execute-api/$(bash scripts/localemu.sh aws cloudformation describe-stacks \
   --stack-name heraap-local --query "Stacks[0].Outputs[?OutputKey=='ApiId'].OutputValue | [0]" --output text)/local
-curl -i -c /tmp/heraap.txt -X POST "$API/auth/dev" \
-  -H 'Content-Type: application/json' -d '{"email":"prueba@example.com"}'
-curl -i -b /tmp/heraap.txt "$API/sesion"
+SESION="$(node backend/tests/soporte/sesion-prueba.cjs)"
+COOKIE="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["cookie"])' <<<"$SESION")"
+curl -i -H "Cookie: $COOKIE" "$API/sesion"
 ```
 
 ## Configuración y secretos
@@ -137,7 +138,6 @@ Rutas de acceso:
 | --- | --- |
 | `GET /auth/google/start` | 302 a Google con `state`, `nonce` y PKCE |
 | `GET /auth/google/callback` | 302 al frontend; crea o vincula usuario y fija cookie |
-| `POST /auth/dev` (`DEV_LOGIN_ENABLED=1`) | 200 con cookie de sesión, solo laboratorio |
 | `GET /sesion` | 200 con `{usuario}` o 401 |
 | `POST /logout` | 204 y cookie expirada |
 
