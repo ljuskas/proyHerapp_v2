@@ -7,7 +7,10 @@ const frontendUrl = process.env.HERAAP_E2E_FRONTEND_URL;
 if (frontendUrl) {
   const endpoint = new URL(frontendUrl);
   const privateIp = isIPv4(endpoint.hostname) && /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(endpoint.hostname);
-  if (!realApi || endpoint.protocol !== 'http:' || endpoint.port !== '4566' || !privateIp) {
+  const publicLab = endpoint.origin === 'https://local.deptofeliz.uk'
+    && endpoint.pathname === '/heraap-frontend-local/index.html';
+  const localLab = endpoint.protocol === 'http:' && endpoint.port === '4566' && privateIp;
+  if (!realApi || (!localLab && !publicLab)) {
     throw new Error('La interfaz publicada de prueba debe pertenecer al laboratorio local.');
   }
 }

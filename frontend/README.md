@@ -34,6 +34,34 @@ Reiniciar Vite después de cambiar el entorno. El build también lee
 `frontend/.env.production.local`, que tiene prioridad sobre `.env.local`.
 Ambos archivos se excluyen de Git. La URL se incorpora al JavaScript al compilar.
 
+### Acceso por Cloudflare Tunnel
+
+Para el build S3, definir en `frontend/.env.production.local` una ruta relativa
+al origen, sustituyendo `API_ID` por el output `ApiId` del backend:
+
+```dotenv
+VITE_API_BASE_URL=/_aws/execute-api/API_ID/local
+```
+
+Recompilar y publicar siguiendo los comandos de abajo. Así, las solicitudes de
+creación y consulta usan el mismo origen que el HTML, tanto por LAN como por
+`https://local.deptofeliz.uk/heraap-frontend-local/index.html`. Una URL de API
+`http://192.168.100.9:4566` incorporada al build no funciona para clientes de
+Internet y el navegador bloquea HTTP desde una página HTTPS.
+
+El túnel existente se administra en Cloudflare: el servicio del hostname
+`local.deptofeliz.uk` debe ser `http://192.168.100.9:4566` (tipo HTTP).
+El acceso del navegador sigue siendo HTTPS. Usar HTTPS hacia esa IP provoca un
+502 por el certificado local, que corresponde a `127.0.0.1`.
+Esta ruta de túnel publica el puerto de LocalEmu completo, incluido su dashboard.
+
+Para verificar el build público con los dos navegadores de prueba:
+
+```bash
+HERAAP_E2E_FRONTEND_URL=https://local.deptofeliz.uk/heraap-frontend-local/index.html \
+  npm run test:frontend:e2e:local
+```
+
 ## Uso
 
 1. Escribir un nombre y pulsar **Crear registro**.
