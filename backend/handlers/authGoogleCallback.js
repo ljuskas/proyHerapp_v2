@@ -2,8 +2,11 @@
 
 const { context, googleClient } = require('../lib/context');
 const { clientIp, userAgent } = require('../lib/auth');
-const { COOKIE_NAME, hashToken } = require('../lib/session');
+const { COOKIE_NAME } = require('../lib/session');
 const { serializeCookie } = require('../lib/cookies');
+const {
+  clearStateCookie, hashState, readStateCookie, sameStateHash,
+} = require('../lib/oauth-state');
 const { requestId, log } = require('../lib/response');
 
 function redirectTo(url, params = {}) {
@@ -12,9 +15,14 @@ function redirectTo(url, params = {}) {
   return target.toString();
 }
 
+function withCookies(result, cookies) {
+  return { ...result, multiValueHeaders: { 'Set-Cookie': cookies } };
+}
+
 function createHandler({
   load = context,
   client = googleClient,
+  now = () => new Date(),
   logger = console,
 } = {}) {
   return async (event, lambdaContext) => {
@@ -27,26 +35,34 @@ function createHandler({
       log(logger, 'error', {
         requestId: trace, action: 'authGoogleCallback', statusCode: 500, error: error.name,
       });
-      return { statusCode: 500, headers: {}, body: '' };
+      return withCookies({ statusCode: 500, headers: {}, body: '' }, [clearStateCookie()]);
     }
     const frontend = deps.settings.FRONTEND_URL;
     const fail = (motivo, statusCode = 302) => {
       log(logger, 'info', {
         requestId: trace, action: 'authGoogleCallback', statusCode, motivo,
       });
-      return {
+      return withCookies({
         statusCode,
         headers: { Location: redirectTo(frontend, { acceso: 'error', motivo }), 'Cache-Control': 'no-store' },
         body: '',
-      };
+      }, [clearStateCookie()]);
     };
 
     if (params.error) return fail('cancelado');
-    if (!params.state || !params.code) return fail('parametros_invalidos');
+    if (typeof params.state !== 'string' || !params.state
+      || typeof params.code !== 'string' || !params.code) {
+      return fail('parametros_invalidos');
+    }
+
+    const esperado = hashState(params.state);
+    const cookie = readStateCookie(event);
+    if (!cookie) return fail('estado_sin_cookie');
+    if (!sameStateHash(cookie, esperado)) return fail('estado_cookie_invalida');
 
     let estado;
     try {
-      estado = await deps.repo.consumirEstado(hashToken(params.state));
+      estado = await deps.repo.consumirEstado(esperado, now());
     } catch (error) {
       log(logger, 'error', {
         requestId: trace, action: 'authGoogleCallback', statusCode: 500, error: error.name,
@@ -79,15 +95,14 @@ function createHandler({
         actorId: usuario.id, accion: 'login', resultado: 'ok', detalle: { proveedor: 'google' },
       });
       log(logger, 'info', { requestId: trace, action: 'authGoogleCallback', statusCode: 302, usuarioId: usuario.id });
-      return {
+      return withCookies({
         statusCode: 302,
-        headers: {
-          Location: frontend,
-          'Set-Cookie': serializeCookie(COOKIE_NAME, token, { maxAge: deps.sessions.ttlMs / 1000 }),
-          'Cache-Control': 'no-store',
-        },
+        headers: { Location: frontend, 'Cache-Control': 'no-store' },
         body: '',
-      };
+      }, [
+        serializeCookie(COOKIE_NAME, token, { maxAge: deps.sessions.ttlMs / 1000 }),
+        clearStateCookie(),
+      ]);
     } catch (error) {
       log(logger, 'error', {
         requestId: trace, action: 'authGoogleCallback', statusCode: 500, error: error.name,

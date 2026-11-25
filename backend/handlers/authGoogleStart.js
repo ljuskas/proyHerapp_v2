@@ -1,10 +1,8 @@
 'use strict';
 
 const { context, googleClient } = require('../lib/context');
-const { hashToken } = require('../lib/session');
+const { STATE_TTL_MS, hashState, stateCookie } = require('../lib/oauth-state');
 const { response, requestId, log } = require('../lib/response');
-
-const STATE_TTL_MS = 10 * 60 * 1000;
 
 function createHandler({
   load = context,
@@ -17,8 +15,9 @@ function createHandler({
     try {
       const deps = await load();
       const flow = client(deps.settings).start();
+      const hash = hashState(flow.state);
       await deps.repo.crearEstado({
-        hash: hashToken(flow.state),
+        hash,
         verifier: flow.verifier,
         nonce: flow.nonce,
         expiraEn: new Date(now().getTime() + STATE_TTL_MS),
@@ -26,7 +25,11 @@ function createHandler({
       log(logger, 'info', { requestId: trace, action: 'authGoogleStart', statusCode: 302 });
       return {
         statusCode: 302,
-        headers: { Location: flow.url, 'Cache-Control': 'no-store' },
+        headers: {
+          Location: flow.url,
+          'Cache-Control': 'no-store',
+          'Set-Cookie': stateCookie(hash),
+        },
         body: '',
       };
     } catch (error) {

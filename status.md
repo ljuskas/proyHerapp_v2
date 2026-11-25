@@ -70,6 +70,40 @@ para retomar el trabajo. El detalle histórico completo vive en `git log`.
 49 pruebas de backend, 13 del cliente, 22 E2E controlados y 2 E2E reales
 (escritorio y móvil), todos en verde; `npm run check` sin errores.
 
+### Tarea 21 — `state` ligado al navegador (commit local, sin push)
+
+Entrega local en la rama `feat/heraap-021`, creada desde `7a73e12`
+(`origin/main`), sin push y sin despliegue. Se conservaron e inspeccionaron los
+cambios parciales que quedaron en `backend/` tras la interrupción del runtime;
+no se reinició ni borró nada.
+
+- `GET /auth/google/start` fija la cookie temporal `heraap_estado_oauth` con el
+  SHA-256 del `state`, `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`.
+  El `state` en claro no se guarda ni viaja en la cookie.
+- El callback exige que la cookie coincida en tiempo constante con el hash
+  recibido antes de consumir `auth_estados`: sin cookie redirige con
+  `motivo=estado_sin_cookie` y con cookie distinta, con
+  `motivo=estado_cookie_invalida`.
+- La cookie se limpia (`Max-Age=0`) tanto en éxito como en cancelación, error de
+  parámetros, state inválido o vencido, rechazo de Google y error interno.
+- Se mantienen el vencimiento de 10 minutos y el uso único: el
+  `DELETE ... RETURNING` sigue condicionado a `expira_en > ahora`; un segundo
+  callback con el mismo state no crea otra sesión.
+- El callback usa `multiValueHeaders` para enviar en la misma respuesta la cookie
+  de sesión y la limpieza de la cookie de estado.
+
+Pruebas de esta entrega: 57 pruebas unitarias de backend en verde con Node
+22.23.5 (nuevas en `oauth-state.test.cjs` y casos de falta de cookie, cookie
+incorrecta, state vencido, doble uso, rechazo de Google y error interno en
+`auth-handlers.test.cjs`). Verificación final: `npm run test:backend` → 57/57 y
+`npm run check` → sin errores.
+
+Pendiente: push de la rama, PR y merge; desplegar al fusionar y confirmar el
+login real en el laboratorio. La verificación HTTP local requiere redesplegar
+las Lambdas. El frontend aún no tiene mensajes específicos para
+`estado_sin_cookie` ni `estado_cookie_invalida`; muestra el mensaje genérico de
+error.
+
 ## 3. Pendiente
 
 ### Tareas 18-24 — Endurecimiento del laboratorio
@@ -82,7 +116,7 @@ previa y aprobación aparte del mensaje de commit.
 | 18 | Rotar lo expuesto | Nueva `DB_PASSWORD` y `GOOGLE_CLIENT_SECRET`, republicar el secreto y redesplegar; rotar también el token del túnel | Las claves antiguas no sirven y el login sigue funcionando |
 | 19 | Aislar runner y pipeline | `CODEOWNERS` de `.github/`, `scripts/` e `infra/`; revisión obligatoria; runner en VM dedicada | Un PR que toca un workflow no se fusiona sin revisión |
 | 20 | PostgreSQL seguro | 5432 solo en red privada, TLS con CA propia y `verify-full`, rol con privilegios mínimos | Sin TLS la conexión se rechaza; API y migraciones funcionan |
-| 21 | `state` ligado al navegador | Cookie temporal con el hash del `state`, verificada en el callback, con vencimiento y uso único | `state` válido sin cookie y doble uso rechazados |
+| 21 | `state` ligado al navegador | **Commit local en `feat/heraap-021`, sin push.** Cookie temporal con el hash del `state`, verificada en el callback, con vencimiento y uso único | `state` válido sin cookie y doble uso rechazados |
 | 22 | Autorización y propiedad | `GET /registros/{id}` solo devuelve los del usuario de la sesión; política para registros sin `usuarioId` | Un usuario no lee el registro de otro |
 | 23 | Endurecer la API | CORS del frontend, comprobación de `Origin`, cabeceras de seguridad, validación estricta, límite de intentos, tope de sesiones, rotación y purga, logs sin tokens | Pruebas por control; una ráfaga de intentos responde 429 |
 | 24 | Cierre | Login real con Google, actualización de este documento, decisión sobre RDS y modo *Testing* | Manifiesto, API y suites en verde |
